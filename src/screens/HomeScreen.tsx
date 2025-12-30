@@ -108,7 +108,7 @@ export const HomeScreen = () => {
                     containerStyle={styles.businessSelectorContainer}
                 />
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <MaterialCommunityIcons name="logout" size={24} color={colors.error.main} />
+                    <MaterialCommunityIcons name="logout" size={24} color={colors.error} />
                 </TouchableOpacity>
             </View>
         </View>

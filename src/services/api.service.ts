@@ -64,8 +64,12 @@ export const apiService = {
                     responseData.error?.includes('expired') ||
                     responseData.error?.includes('jwt expired') ||
                     responseData.message?.includes('expired');
+                const isMissingToken =
+                    responseData.error?.includes('Missing authorization') ||
+                    responseData.message?.includes('Missing authorization') ||
+                    !token;
 
-                if (isTokenExpired) {
+                if (isTokenExpired || isMissingToken) {
                     // Ensure only one refresh happens at a time
                     if (!isRefreshing) {
                         isRefreshing = true;
