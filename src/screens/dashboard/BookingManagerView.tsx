@@ -653,7 +653,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                     courtId: facility.id,
                                                                     startTime: format(new Date(), 'HH:00'),
                                                                     endTime: format(new Date(new Date().setHours(new Date().getHours() + 1)), 'HH:00'),
-                                                                    price: facility.pricePerSlot?.toString() || '',
+                                                                    price: (facility.pricePerSlot || facility.hourlyRate)?.toString() || '',
                                                                 });
                                                             }}
                                                         >
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
         height: ROW_HEIGHT,
         borderBottomWidth: 1,
         borderBottomColor: colors.neutral[100],
-        borderStyle: 'dashed', // Optional: dashed lines for hours
+        borderStyle: 'solid',
     },
     bookingBlock: {
         position: 'absolute',
@@ -1751,13 +1751,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: colors.neutral[200],
-    },
-    emptyBookingsText: {
-        fontSize: 12,
-        color: colors.neutral[400],
-        textAlign: 'center',
-        fontStyle: 'italic',
-        marginTop: spacing.sm,
     },
     bookingList: {
         gap: spacing.sm,

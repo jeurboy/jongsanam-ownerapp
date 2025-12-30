@@ -42,6 +42,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const refreshTokenValue = await authService.getStoredRefreshToken();
             const user = await authService.getStoredUser();
 
+            // Delay splash screen for 3 seconds
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
+
             if (accessToken && refreshTokenValue && user) {
                 setState({
                     user,
@@ -61,6 +64,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error) {
             console.error('Auth check error:', error);
+            // Delay even on error
+            await new Promise<void>(resolve => setTimeout(resolve, 3000));
             setState({
                 user: null,
                 accessToken: null,

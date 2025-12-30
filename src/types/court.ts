@@ -11,4 +11,5 @@ export interface Court {
     approvalStatus?: 'approved' | 'pending' | 'rejected';
     capacity?: number;
     isCapacity?: boolean;
+    pricePerSlot?: number;
 }

@@ -7,6 +7,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { colors } from '../theme/tokens';
 
+import { SplashScreen } from '../screens/SplashScreen';
+
 export type RootStackParamList = {
     Login: undefined;
     Home: undefined;
@@ -18,11 +20,7 @@ export const AppNavigator = () => {
     const { isAuthenticated, isLoading } = useAuth();
 
     if (isLoading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary.main} />
-            </View>
-        );
+        return <SplashScreen />;
     }
 
     return (
