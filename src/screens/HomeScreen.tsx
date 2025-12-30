@@ -5,12 +5,11 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Dimensions,
     Image,
-    SafeAreaView,
     StatusBar,
     Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius } from '../theme/tokens';
 import { responsive } from '../utils/responsive';
@@ -19,10 +18,12 @@ import { businessService } from '../services/business.service';
 import { Business } from '../types/business';
 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { SidebarTab } from '../components/Sidebar';
+import { BookingManagerView } from './dashboard/BookingManagerView';
+import { UserManagerView } from './dashboard/UserManagerView';
 
-const { width } = Dimensions.get('window');
-
-// Placeholder for the background image - User should save the generated image to assets or use this placeholder
+// Placeholder for the background image
 const HOME_BG_IMAGE = require('../assets/images/home_bg.png');
 
 const MENU_ITEMS = [
@@ -56,6 +57,7 @@ export const HomeScreen = () => {
     const { user, logout } = useAuth();
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<SidebarTab>('overview');
 
     useEffect(() => {
         fetchBusinesses();
@@ -72,7 +74,6 @@ export const HomeScreen = () => {
             }
         } catch (error) {
             console.error('Failed to fetch businesses:', error);
-            // Optionally show error to user
         }
     };
 
@@ -81,10 +82,7 @@ export const HomeScreen = () => {
             'ยืนยันการออกจากระบบ',
             'คุณต้องการออกจากระบบใช่หรือไม่?',
             [
-                {
-                    text: 'ยกเลิก',
-                    style: 'cancel',
-                },
+                { text: 'ยกเลิก', style: 'cancel' },
                 {
                     text: 'ออกจากระบบ',
                     style: 'destructive',
@@ -162,34 +160,65 @@ export const HomeScreen = () => {
             key={item.id}
             style={[styles.menuCard, { backgroundColor: colors.white }]}
             activeOpacity={0.7}
+            onPress={() => {
+                // Map legacy menu items to tabs if possible
+                if (item.id === 'booking') setActiveTab('booking');
+                else if (item.id === 'customer') setActiveTab('users');
+                else if (item.id === 'overview') setActiveTab('overview');
+            }}
         >
             <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
                 <MaterialCommunityIcons name={item.iconName} size={32} color={item.accent} />
             </View>
             <Text style={styles.menuCardTitle}>{item.title}</Text>
-            {/* Added subtitle for better context if needed, or keep it minimal */}
-            {/* <Text style={styles.menuCardSubtitle}>{item.subtitle}</Text> */}
             <View style={[styles.indicator, { backgroundColor: item.accent }]} />
         </TouchableOpacity>
     );
 
+    const renderOverview = () => (
+        <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+        >
+            {renderHeader()}
+            <Text style={styles.sectionTitle}>เมนูหลัก</Text>
+            <View style={styles.gridContainer}>
+                {MENU_ITEMS.map(renderMenuItem)}
+            </View>
+        </ScrollView>
+    );
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'booking':
+                return <BookingManagerView />;
+            case 'users':
+                return <UserManagerView />;
+            case 'overview':
+            default:
+                return renderOverview();
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-            <SafeAreaView style={styles.safeArea}>
-                <StickyHeader />
-                <ScrollView
-                    contentContainerStyle={styles.content}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {renderHeader()}
-
-                    <Text style={styles.sectionTitle}>เมนูหลัก</Text>
-                    <View style={styles.gridContainer}>
-                        {MENU_ITEMS.map(renderMenuItem)}
+            {/* SafeAreaView wrapped inside DashboardLayout or used as container?
+                 Since we have a full screen sidebar, we want the Safe Area to apply mainly to the content or the sidebar independently.
+                 Actually, SafeAreaProvider is at root.
+                 DashboardLayout is a flex-row container. 
+                 Sidebar needs padding top/bottom for safe area.
+                 Content needs safe area.
+                 Let's wrap the whole thing in SafeAreaView for now, but `edges` prop might be needed for sidebar vs content.
+                 Alternatively, use SafeAreaView as the root container.
+            */}
+            <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+                <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+                    <View style={{ flex: 1 }}>
+                        <StickyHeader />
+                        {renderContent()}
                     </View>
-
-                </ScrollView>
+                </DashboardLayout>
             </SafeAreaView>
         </View>
     );
@@ -202,13 +231,14 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        backgroundColor: '#1E1E2E', // Match sidebar color to avoid safe area white bars on left
     },
     content: {
         padding: responsive.spacing.lg,
         paddingBottom: responsive.spacing.xxl,
     },
     stickyHeader: {
-        backgroundColor: colors.neutral[50], // Match screen background
+        backgroundColor: colors.neutral[50],
         paddingHorizontal: responsive.spacing.lg,
         paddingTop: spacing.md,
         paddingBottom: spacing.sm,
@@ -218,7 +248,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xl,
         borderRadius: borderRadius.xl,
         overflow: 'hidden',
-        backgroundColor: colors.primary.main, // Fallback
+        backgroundColor: colors.primary.main,
         position: 'relative',
     },
     headerBackground: {
@@ -228,7 +258,7 @@ const styles = StyleSheet.create({
     },
     headerContentOverlay: {
         padding: responsive.spacing.lg,
-        backgroundColor: 'rgba(255,255,255,0.85)', // Light overlay for readability
+        backgroundColor: 'rgba(255,255,255,0.85)',
     },
     topRow: {
         flexDirection: 'row',
@@ -241,7 +271,7 @@ const styles = StyleSheet.create({
     },
     logoutButton: {
         width: 48,
-        height: 48, // Match height of BusinessSelector (roughly)
+        height: 48,
         borderRadius: borderRadius.lg,
         backgroundColor: colors.white,
         borderWidth: 1,
@@ -309,8 +339,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         textAlign: 'center',
         textAlignVertical: 'center',
-        // LineHeight handles vertical centering for the icon text, but for Vector Icons we rely on container alignment or specific style
-        // For Vector Icons, we might need justifyContent/alignItems in the container if textAlign doesn't work well
     },
     statBadgeValue: {
         fontSize: responsive.fontSize.lg,
@@ -335,7 +363,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xl,
     },
     menuCard: {
-        width: '48%', // Default for 2 columns
+        width: '48%',
         aspectRatio: 1,
         borderRadius: borderRadius.xl,
         padding: responsive.spacing.lg,
@@ -371,36 +399,5 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-    },
-    bannerContainer: {
-        backgroundColor: colors.neutral[900],
-        borderRadius: borderRadius.xl,
-        padding: responsive.spacing.lg,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        overflow: 'hidden',
-    },
-    bannerContent: {
-        flex: 1,
-        marginRight: spacing.md,
-    },
-    bannerTitle: {
-        fontSize: responsive.fontSize.md,
-        fontWeight: 'bold',
-        color: colors.white,
-        marginBottom: 4,
-    },
-    bannerSubtitle: {
-        fontSize: responsive.fontSize.xs,
-        color: colors.neutral[400],
-    },
-    bannerIcon: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
 });
