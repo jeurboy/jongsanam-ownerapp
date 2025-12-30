@@ -13,7 +13,7 @@ import { th } from 'date-fns/locale';
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
 const COURT_COL_WIDTH = 120;
-const HEADER_HEIGHT = 32; // Further reduced for thinner header
+const HEADER_HEIGHT = 50; // Height for sport badge + court name
 const ROW_HEIGHT = 60; // Height per hour slot
 const START_HOUR = 8; // 08:00
 const END_HOUR = 24;  // 24:00 (Midnight)
@@ -126,7 +126,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         status: 'CONFIRMED'
     });
     const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+    const [editingIsCapacity, setEditingIsCapacity] = useState<boolean>(false);
     const [expandedFacilityId, setExpandedFacilityId] = useState<string | null>(null);
+    const [managementMode, setManagementMode] = useState<'SLOT' | 'CAPACITY'>('SLOT');
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -293,15 +295,36 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         };
     };
 
-    const handleBookingPress = async (bookingId: string) => {
+    const handleBookingPress = async (bookingId: string, isCapacity: boolean = false) => {
         setLoadingDetail(true);
         setModalVisible(true);
         // Clear previous selection while loading to show spinner
         setSelectedBooking(null);
         try {
-            // Fetch full detail
-            const detail = await bookingService.getBookingDetail(bookingId);
-            setSelectedBooking(detail);
+            if (isCapacity) {
+                // For capacity bookings, use data from local state (no GET by ID endpoint)
+                const localBooking = bookings.find(b => b.id === bookingId) as any;
+                if (localBooking) {
+                    // Use court info from booking if available, otherwise fallback to courts state
+                    let courtInfo = localBooking.court;
+                    if (!courtInfo?.name) {
+                        const facilityId = localBooking.courtId || localBooking.court?.id;
+                        const facility = courts.find(c => c.id === facilityId);
+                        courtInfo = facility ? { id: facility.id, name: facility.name } : courtInfo;
+                    }
+
+                    const bookingWithCapacity = {
+                        ...localBooking,
+                        isCapacity: true,
+                        court: courtInfo
+                    };
+                    setSelectedBooking(bookingWithCapacity);
+                }
+            } else {
+                // For regular bookings, fetch full detail from API
+                const detail = await bookingService.getBookingDetail(bookingId);
+                setSelectedBooking(detail);
+            }
         } catch (error) {
             console.error('Error fetching details:', error);
         } finally {
@@ -329,14 +352,18 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     const handleEditBooking = () => {
         if (!selectedBooking) return;
 
-        const booking = selectedBooking;
+        const booking = selectedBooking as any;
         setEditingBookingId(booking.id);
+
+        // Check if this is a capacity booking
+        const isCapacity = booking.isCapacity === true;
+        setEditingIsCapacity(isCapacity);
 
         // Parse date and times
         const startDate = parseISO(booking.timeSlotStart);
         const endDate = parseISO(booking.timeSlotEnd);
 
-        let phone = booking.serviceUser?.phone || '';
+        let phone = booking.serviceUser?.phone || booking.customerPhone || '';
         if (phone.startsWith('+66')) {
             phone = '0' + phone.substring(3);
         }
@@ -346,7 +373,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             date: format(startDate, 'yyyy-MM-dd'),
             startTime: format(startDate, 'HH:mm'),
             endTime: format(endDate, 'HH:mm'),
-            customerName: booking.serviceUser?.name || '',
+            customerName: booking.serviceUser?.name || booking.customerName || '',
             customerPhone: phone,
             price: booking.totalPrice ? booking.totalPrice.toString() : '',
             status: booking.status
@@ -386,7 +413,15 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             };
 
             if (editingBookingId) {
-                await bookingService.updateBooking(editingBookingId, { ...payload, courtId: newBooking.courtId });
+                // Use appropriate update function based on booking type
+                if (editingIsCapacity) {
+                    await bookingService.updateCapacityBooking(editingBookingId, {
+                        ...payload,
+                        facilityId: newBooking.courtId
+                    });
+                } else {
+                    await bookingService.updateBooking(editingBookingId, { ...payload, courtId: newBooking.courtId });
+                }
             } else {
                 if (isCapacity) {
                     await bookingService.createCapacityBooking({
@@ -405,6 +440,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
             setAddModalVisible(false);
             setEditingBookingId(null);
+            setEditingIsCapacity(false);
             loadData(); // Refresh bookings
         } catch (error) {
             console.error('Error saving booking:', error);
@@ -466,15 +502,42 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     <Text style={styles.subtitle}>{format(selectedDate, 'd MMMM yyyy', { locale: th })}</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))}>
-                        <MaterialCommunityIcons name="chevron-left" size={30} color={colors.neutral[600]} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.todayButton} onPress={() => setSelectedDate(new Date())}>
-                        <Text style={styles.todayText}>วันนี้</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))}>
-                        <MaterialCommunityIcons name="chevron-right" size={30} color={colors.neutral[600]} />
-                    </TouchableOpacity>
+                    <View style={styles.modeSwitcher}>
+                        <TouchableOpacity
+                            style={[styles.modeButton, managementMode === 'SLOT' && styles.modeButtonActive]}
+                            onPress={() => setManagementMode('SLOT')}
+                        >
+                            <MaterialCommunityIcons
+                                name="grid"
+                                size={18}
+                                color={managementMode === 'SLOT' ? colors.white : colors.neutral[400]}
+                            />
+                            <Text style={[styles.modeButtonText, managementMode === 'SLOT' && styles.modeButtonTextActive]}>รายสนาม</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modeButton, managementMode === 'CAPACITY' && styles.modeButtonActive]}
+                            onPress={() => setManagementMode('CAPACITY')}
+                        >
+                            <MaterialCommunityIcons
+                                name="account-group"
+                                size={18}
+                                color={managementMode === 'CAPACITY' ? colors.white : colors.neutral[400]}
+                            />
+                            <Text style={[styles.modeButtonText, managementMode === 'CAPACITY' && styles.modeButtonTextActive]}>ระบุจำนวน</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.dateControls}>
+                        <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))}>
+                            <MaterialCommunityIcons name="chevron-left" size={30} color={colors.neutral[600]} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.todayButton} onPress={() => setSelectedDate(new Date())}>
+                            <Text style={styles.todayText}>วันนี้</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))}>
+                            <MaterialCommunityIcons name="chevron-right" size={30} color={colors.neutral[600]} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
@@ -487,11 +550,239 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     <Text style={styles.emptyText}>ไม่พบข้อมูลสนาม</Text>
                 </View>
             ) : (
-                <View style={styles.tableContainer}>
-                    {/* Sport Tabs */}
+                <View style={[styles.tableContainer, { backgroundColor: 'transparent', borderWidth: 0 }]}>
+                    {managementMode === 'SLOT' ? (
+                        slotCourts.length > 0 ? (
+                            <View style={[styles.tableContainer, { flex: 1 }]}>
+                                <View style={styles.tableHeaderRow}>
+                                    <TouchableOpacity
+                                        style={styles.tableAddButton}
+                                        onPress={() => openAddModal()}
+                                        activeOpacity={0.7}
+                                    >
+                                        <MaterialCommunityIcons name="plus-box" size={24} color={colors.primary.main} />
+                                    </TouchableOpacity>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        scrollEnabled={false}
+                                        ref={headerScrollRef}
+                                    >
+                                        {slotCourts.map(court => (
+                                            <View key={court.id} style={styles.columnHeader}>
+                                                <View style={styles.sportBadgeSmall}>
+                                                    <Text style={styles.sportBadgeTextSmall}>
+                                                        {getSportName(getCourtSportType(court) || 'ทั่วไป')}
+                                                    </Text>
+                                                </View>
+                                                <Text style={styles.columnHeaderText} numberOfLines={1}>{court.name}</Text>
+                                            </View>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                    <ScrollView style={styles.verticalScroll}>
+                                        <View style={styles.bodyContainer}>
+                                            <View style={styles.timeColumn}>
+                                                {timeSlots.map((time, index) => (
+                                                    <View key={index} style={styles.timeSlot}>
+                                                        <Text style={styles.timeText}>{time}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+
+                                            <ScrollView
+                                                horizontal
+                                                onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                                                    const x = e.nativeEvent.contentOffset.x;
+                                                    headerScrollRef.current?.scrollTo({ x, animated: false });
+                                                }}
+                                                scrollEventThrottle={16}
+                                            >
+                                                <View style={styles.grid}>
+                                                    {slotCourts.map((court) => {
+                                                        return (
+                                                            <View key={court.id} style={styles.courtColumn}>
+                                                                {/* Background Grid Cells */}
+                                                                {timeSlots.map((time, tIndex) => (
+                                                                    <TouchableOpacity
+                                                                        key={tIndex}
+                                                                        style={styles.gridCell}
+                                                                        activeOpacity={1}
+                                                                        onPress={() => openAddModal({
+                                                                            courtId: court.id,
+                                                                            startTime: time,
+                                                                            endTime: time.split(':')[0].padStart(2, '0') + ':59'
+                                                                        })}
+                                                                    />
+                                                                ))}
+
+                                                                {/* Standard: Render Stacked Bookings (Merged) */}
+                                                                {getMergedBookingsForCourt(court.id).map(mergedBooking => {
+                                                                    const bookingStyle = getMergedBookingStyle(mergedBooking);
+                                                                    return (
+                                                                        <TouchableOpacity
+                                                                            key={mergedBooking.id}
+                                                                            style={[
+                                                                                styles.bookingBlock,
+                                                                                {
+                                                                                    top: bookingStyle.top,
+                                                                                    height: bookingStyle.height,
+                                                                                    backgroundColor: bookingStyle.backgroundColor,
+                                                                                    borderLeftColor: bookingStyle.borderColor,
+                                                                                }
+                                                                            ]}
+                                                                            onPress={() => handleBookingPress(mergedBooking.bookings[0].id)}
+                                                                            activeOpacity={0.8}
+                                                                        >
+                                                                            <Text style={styles.bookingText} numberOfLines={1}>
+                                                                                {mergedBooking.bookings[0].serviceUser?.name || 'ลูกค้า'}
+                                                                            </Text>
+                                                                            <Text style={styles.bookingSubText} numberOfLines={1}>
+                                                                                {mergedBooking.bookings[0].serviceUser?.phone || ''}
+                                                                            </Text>
+                                                                        </TouchableOpacity>
+                                                                    );
+                                                                })}
+                                                            </View>
+                                                        );
+                                                    })}
+                                                </View>
+                                            </ScrollView>
+                                        </View>
+                                    </ScrollView>
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={styles.emptyContent}>
+                                <Text style={styles.emptyText}>ไม่พบข้อมูลสนาม</Text>
+                            </View>
+                        )
+                    ) : (
+                        capacityCourts.length > 0 ? (
+                            <View style={[styles.tableContainer, { flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.6)' }]}>
+                                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+                                    <View style={[styles.capacityContainer, { marginTop: 0, borderTopWidth: 0, paddingTop: 10 }]}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                            <Text style={[styles.sectionHeader, { marginBottom: 0 }]}>การจองแบบระบุจำนวน</Text>
+                                            <TouchableOpacity
+                                                style={[styles.addCapacityButton, { paddingHorizontal: 16 }]}
+                                                onPress={() => openAddModal()}
+                                            >
+                                                <MaterialCommunityIcons name="plus" size={18} color="white" />
+                                                <Text style={styles.addCapacityButtonText}>เพิ่มการจอง</Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {capacityCourts.map(facility => {
+                                            const facilityBookings = bookings.filter(b => (b.courtId === facility.id || b.court?.id === facility.id) && b.status !== 'CANCELLED');
+                                            const uniquePhones = new Set(facilityBookings.map(b => b.customerPhone || b.serviceUser?.phone)).size;
+                                            const isExpanded = expandedFacilityId === facility.id;
+
+                                            return (
+                                                <View key={facility.id} style={styles.facilityCard}>
+                                                    <View style={styles.facilityHeader}>
+                                                        <View style={{ flex: 1 }}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                                <Text style={styles.facilityName}>{facility.name}</Text>
+                                                                <View style={styles.sportBadgeSmall}>
+                                                                    <Text style={styles.sportBadgeTextSmall}>{getSportName(getCourtSportType(facility) || 'บริการ')}</Text>
+                                                                </View>
+                                                            </View>
+                                                            <Text style={styles.facilitySubName}>
+                                                                พื้นที่ใช้งาน: {uniquePhones} ท่าน | ความจุสูงสุด {getCourtCapacity(facility)} ท่าน
+                                                            </Text>
+                                                        </View>
+                                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                            <TouchableOpacity
+                                                                style={styles.detailsButton}
+                                                                onPress={() => setExpandedFacilityId(isExpanded ? null : facility.id)}
+                                                            >
+                                                                <MaterialCommunityIcons
+                                                                    name={isExpanded ? "chevron-up" : "format-list-bulleted"}
+                                                                    size={18}
+                                                                    color={colors.neutral[600]}
+                                                                />
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
+                                                                style={styles.addCapacityButton}
+                                                                onPress={() => {
+                                                                    openAddModal({
+                                                                        courtId: facility.id,
+                                                                        startTime: format(new Date(), 'HH:00'),
+                                                                        endTime: format(new Date(new Date().setHours(new Date().getHours() + 1)), 'HH:00'),
+                                                                        price: (facility.pricePerSlot || (facility as any).hourlyRate)?.toString() || '',
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <MaterialCommunityIcons name="plus" size={16} color="white" />
+                                                                <Text style={styles.addCapacityButtonText}>จอง</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+
+                                                    {/* List of Capacity Bookings - Only show if expanded */}
+                                                    {isExpanded && (
+                                                        <View style={styles.bookingList}>
+                                                            {facilityBookings.length > 0 ? (
+                                                                facilityBookings
+                                                                    .sort((a, b) => a.timeSlotStart.localeCompare(b.timeSlotStart))
+                                                                    .map(booking => (
+                                                                        <TouchableOpacity
+                                                                            key={booking.id}
+                                                                            style={styles.capacityBookingItem}
+                                                                            onPress={() => handleBookingPress(booking.id, true)}
+                                                                        >
+                                                                            <View style={styles.checkInTime}>
+                                                                                <Text style={styles.timeTextSmall}>
+                                                                                    {format(parseISO(booking.timeSlotStart), 'HH:mm')} - {format(parseISO(booking.timeSlotEnd), 'HH:mm')}
+                                                                                </Text>
+                                                                            </View>
+                                                                            <View style={styles.bookingUserInfo}>
+                                                                                <Text style={styles.bookingUserName}>{booking.customerName || booking.serviceUser?.name || 'ลูกค้า'}</Text>
+                                                                                <Text style={styles.bookingUserPhone}>{booking.customerPhone || booking.serviceUser?.phone}</Text>
+                                                                            </View>
+                                                                            <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
+                                                                                <Text style={styles.statusTextSmall}>{booking.status}</Text>
+                                                                            </View>
+                                                                        </TouchableOpacity>
+                                                                    ))
+                                                            ) : (
+                                                                <Text style={styles.emptyBookingsText}>ยังไม่มีรายการจองในขณะนี้</Text>
+                                                            )}
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        ) : (
+                            <View style={styles.emptyContent}>
+                                <Text style={styles.emptyText}>ไม่พบข้อมูลบริการ</Text>
+                            </View>
+                        )
+                    )}
+
+                    {/* Sport Tabs - Moved to Bottom like Navigation */}
                     <View style={styles.tabContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {sportTabs.map(sport => (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContent}>
+                            {sportTabs.filter(sport => {
+                                // Keep 'ALL' always visible
+                                if (sport === 'ALL') return true;
+
+                                // Check relevance based on management mode using ALL courts (not filtered)
+                                const allSlotCourts = courts.filter(c => getCourtCapacity(c) <= 1);
+                                const allCapacityCourts = courts.filter(c => getCourtCapacity(c) > 1);
+
+                                if (managementMode === 'SLOT') {
+                                    return allSlotCourts.some(c => getCourtSportType(c) === sport);
+                                } else {
+                                    return allCapacityCourts.some(c => getCourtSportType(c) === sport);
+                                }
+                            }).map(sport => (
                                 <TouchableOpacity
                                     key={sport}
                                     style={[
@@ -510,197 +801,6 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             ))}
                         </ScrollView>
                     </View>
-
-                    {slotCourts.length > 0 && (
-                        <>
-                            <View style={styles.tableHeaderRow}>
-                                <TouchableOpacity
-                                    style={styles.tableAddButton}
-                                    onPress={() => openAddModal()}
-                                    activeOpacity={0.7}
-                                >
-                                    <MaterialCommunityIcons name="plus-box" size={24} color={colors.primary.main} />
-                                </TouchableOpacity>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    scrollEnabled={false}
-                                    ref={headerScrollRef}
-                                >
-                                    {slotCourts.map(court => (
-                                        <View key={court.id} style={styles.columnHeader}>
-                                            <View style={styles.sportBadgeSmall}>
-                                                <Text style={styles.sportBadgeTextSmall}>
-                                                    {getSportName(getCourtSportType(court) || 'ทั่วไป')}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.columnHeaderText} numberOfLines={1}>{court.name}</Text>
-                                        </View>
-                                    ))}
-                                </ScrollView>
-                            </View>
-
-                            <View style={{ flex: 1 }}>
-                                <ScrollView style={styles.verticalScroll}>
-                                    <View style={styles.bodyContainer}>
-                                        <View style={styles.timeColumn}>
-                                            {timeSlots.map((time, index) => (
-                                                <View key={index} style={styles.timeSlot}>
-                                                    <Text style={styles.timeText}>{time}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-
-                                        <ScrollView
-                                            horizontal
-                                            onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                                                const x = e.nativeEvent.contentOffset.x;
-                                                headerScrollRef.current?.scrollTo({ x, animated: false });
-                                            }}
-                                            scrollEventThrottle={16}
-                                        >
-                                            <View style={styles.grid}>
-                                                {slotCourts.map((court) => {
-                                                    return (
-                                                        <View key={court.id} style={styles.courtColumn}>
-                                                            {/* Background Grid Cells */}
-                                                            {timeSlots.map((time, tIndex) => (
-                                                                <TouchableOpacity
-                                                                    key={tIndex}
-                                                                    style={styles.gridCell}
-                                                                    activeOpacity={1}
-                                                                    onPress={() => openAddModal({
-                                                                        courtId: court.id,
-                                                                        startTime: time,
-                                                                        endTime: time.split(':')[0].padStart(2, '0') + ':59'
-                                                                    })}
-                                                                />
-                                                            ))}
-
-                                                            {/* Standard: Render Stacked Bookings (Merged) */}
-                                                            {getMergedBookingsForCourt(court.id).map(mergedBooking => {
-                                                                const bookingStyle = getMergedBookingStyle(mergedBooking);
-                                                                return (
-                                                                    <TouchableOpacity
-                                                                        key={mergedBooking.id}
-                                                                        style={[
-                                                                            styles.bookingBlock,
-                                                                            {
-                                                                                top: bookingStyle.top,
-                                                                                height: bookingStyle.height,
-                                                                                backgroundColor: bookingStyle.backgroundColor,
-                                                                                borderLeftColor: bookingStyle.borderColor,
-                                                                            }
-                                                                        ]}
-                                                                        onPress={() => handleBookingPress(mergedBooking.bookings[0].id)}
-                                                                        activeOpacity={0.8}
-                                                                    >
-                                                                        <Text style={styles.bookingText} numberOfLines={1}>
-                                                                            {mergedBooking.bookings[0].serviceUser?.name || 'ลูกค้า'}
-                                                                        </Text>
-                                                                        <Text style={styles.bookingSubText} numberOfLines={1}>
-                                                                            {mergedBooking.bookings[0].serviceUser?.phone || ''}
-                                                                        </Text>
-                                                                    </TouchableOpacity>
-                                                                );
-                                                            })}
-                                                        </View>
-                                                    );
-                                                })}
-                                            </View>
-                                        </ScrollView>
-                                    </View>
-                                </ScrollView>
-                            </View>
-                        </>
-                    )}
-
-                    {/* Capacity Base Section - Independent Scroll Area */}
-                    {capacityCourts.length > 0 && (
-                        <View style={{ flex: slotCourts.length > 0 ? 0 : 1, height: slotCourts.length > 0 ? '35%' : undefined, borderTopWidth: slotCourts.length > 0 ? 1 : 0, borderTopColor: colors.neutral[200], backgroundColor: 'white' }}>
-                            <ScrollView nestedScrollEnabled contentContainerStyle={{ flexGrow: 1 }}>
-                                <View style={[styles.capacityContainer, { marginTop: 0, borderTopWidth: 0, paddingTop: 20 }]}>
-                                    <Text style={styles.sectionHeader}>บริการ (Capacity Base)</Text>
-                                    {capacityCourts.map(facility => {
-                                        const facilityBookings = bookings.filter(b => b.courtId === facility.id && b.status !== 'CANCELLED');
-                                        const uniquePhones = new Set(facilityBookings.map(b => b.customerPhone || b.serviceUser?.phone)).size;
-                                        const isExpanded = expandedFacilityId === facility.id;
-
-                                        return (
-                                            <View key={facility.id} style={styles.facilityCard}>
-                                                <View style={styles.facilityHeader}>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={styles.facilityName}>{facility.name}</Text>
-                                                        <Text style={styles.facilitySubName}>
-                                                            พื้นที่ใช้งาน: {uniquePhones} ท่าน | ความจุสูงสุด {getCourtCapacity(facility)} ท่าน
-                                                        </Text>
-                                                    </View>
-                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                                        <TouchableOpacity
-                                                            style={styles.detailsButton}
-                                                            onPress={() => setExpandedFacilityId(isExpanded ? null : facility.id)}
-                                                        >
-                                                            <MaterialCommunityIcons
-                                                                name={isExpanded ? "chevron-up" : "format-list-bulleted"}
-                                                                size={18}
-                                                                color={colors.neutral[600]}
-                                                            />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.addCapacityButton}
-                                                            onPress={() => {
-                                                                openAddModal({
-                                                                    courtId: facility.id,
-                                                                    startTime: format(new Date(), 'HH:00'),
-                                                                    endTime: format(new Date(new Date().setHours(new Date().getHours() + 1)), 'HH:00'),
-                                                                    price: (facility.pricePerSlot || facility.hourlyRate)?.toString() || '',
-                                                                });
-                                                            }}
-                                                        >
-                                                            <MaterialCommunityIcons name="plus" size={16} color="white" />
-                                                            <Text style={styles.addCapacityButtonText}>จอง</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-
-                                                {/* List of Capacity Bookings - Only show if expanded */}
-                                                {isExpanded && (
-                                                    <View style={styles.bookingList}>
-                                                        {facilityBookings.length > 0 ? (
-                                                            facilityBookings
-                                                                .sort((a, b) => a.timeSlotStart.localeCompare(b.timeSlotStart))
-                                                                .map(booking => (
-                                                                    <TouchableOpacity
-                                                                        key={booking.id}
-                                                                        style={styles.capacityBookingItem}
-                                                                        onPress={() => handleBookingPress(booking.id)}
-                                                                    >
-                                                                        <View style={styles.checkInTime}>
-                                                                            <Text style={styles.timeTextSmall}>
-                                                                                {format(parseISO(booking.timeSlotStart), 'HH:mm')} - {format(parseISO(booking.timeSlotEnd), 'HH:mm')}
-                                                                            </Text>
-                                                                        </View>
-                                                                        <View style={styles.bookingUserInfo}>
-                                                                            <Text style={styles.bookingUserName}>{booking.customerName || booking.serviceUser?.name || 'ลูกค้า'}</Text>
-                                                                            <Text style={styles.bookingUserPhone}>{booking.customerPhone || booking.serviceUser?.phone}</Text>
-                                                                        </View>
-                                                                        <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
-                                                                            <Text style={styles.statusTextSmall}>{booking.status}</Text>
-                                                                        </View>
-                                                                    </TouchableOpacity>
-                                                                ))
-                                                        ) : (
-                                                            <Text style={styles.emptyBookingsText}>ยังไม่มีรายการจองในขณะนี้</Text>
-                                                        )}
-                                                    </View>
-                                                )}
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            </ScrollView>
-                        </View>
-                    )}
                 </View>
             )
             }
@@ -733,7 +833,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                     <MaterialCommunityIcons name="account" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
                                     <View>
                                         <Text style={styles.detailLabel}>ลูกค้า</Text>
-                                        <Text style={styles.detailValue}>{selectedBooking.serviceUser?.name || '-'}</Text>
+                                        <Text style={styles.detailValue}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.detailRow}>
@@ -742,7 +842,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                         <Text style={styles.detailLabel}>เบอร์โทรศัพท์</Text>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                const phone = selectedBooking.serviceUser?.phone;
+                                                const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
                                                 if (phone) {
                                                     Clipboard.setString(phone);
                                                     Alert.alert('คัดลอกสำเร็จ', `เบอร์ ${phone} ถูกคัดลอกแล้ว`);
@@ -750,7 +850,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                             }}
                                         >
                                             <View style={styles.copyableRow}>
-                                                <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || '-'}</Text>
+                                                <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
                                                 <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
                                             </View>
                                         </TouchableOpacity>
@@ -836,23 +936,34 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             <Text style={styles.formLabel}>สนาม *</Text>
                             <View style={styles.pickerContainer}>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                    {courts.map(court => (
-                                        <TouchableOpacity
-                                            key={court.id}
-                                            style={[
-                                                styles.pickerItem,
-                                                newBooking.courtId === court.id && styles.pickerItemSelected
-                                            ]}
-                                            onPress={() => setNewBooking(prev => ({ ...prev, courtId: court.id }))}
-                                        >
-                                            <Text style={[
-                                                styles.pickerItemText,
-                                                newBooking.courtId === court.id && styles.pickerItemTextSelected
-                                            ]}>
-                                                {court.name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                    {courts
+                                        .filter(court => {
+                                            // When editing, only show courts of the same type
+                                            if (editingBookingId) {
+                                                const courtIsCapacity = getCourtCapacity(court) > 1;
+                                                return courtIsCapacity === editingIsCapacity;
+                                            }
+                                            // When creating new, show based on current management mode
+                                            const courtIsCapacity = getCourtCapacity(court) > 1;
+                                            return managementMode === 'CAPACITY' ? courtIsCapacity : !courtIsCapacity;
+                                        })
+                                        .map(court => (
+                                            <TouchableOpacity
+                                                key={court.id}
+                                                style={[
+                                                    styles.pickerItem,
+                                                    newBooking.courtId === court.id && styles.pickerItemSelected
+                                                ]}
+                                                onPress={() => setNewBooking(prev => ({ ...prev, courtId: court.id }))}
+                                            >
+                                                <Text style={[
+                                                    styles.pickerItemText,
+                                                    newBooking.courtId === court.id && styles.pickerItemTextSelected
+                                                ]}>
+                                                    {court.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
                                 </ScrollView>
                             </View>
                         </View>
@@ -1111,19 +1222,22 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.neutral[50],
-        padding: 10,
+        backgroundColor: 'transparent',
+        paddingLeft: 40,
+        paddingRight: spacing.lg,
+        paddingBottom: spacing.lg,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 6,
+        paddingVertical: 10,
         paddingHorizontal: spacing.lg,
-        backgroundColor: colors.white,
-        borderRadius: borderRadius.md,
-        marginBottom: 8,
-        elevation: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        borderRadius: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     title: {
         fontFamily: fonts.bold,
@@ -1139,7 +1253,39 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
+        gap: spacing.lg,
+    },
+    modeSwitcher: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        padding: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    modeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderRadius: 10,
+        gap: 6,
+    },
+    modeButtonActive: {
+        backgroundColor: colors.primary.main,
+    },
+    modeButtonText: {
+        fontFamily: fonts.medium,
+        fontSize: 13,
+        color: colors.neutral[500],
+    },
+    modeButtonTextActive: {
+        color: colors.white,
+    },
+    dateControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
     },
     todayButton: {
         paddingHorizontal: spacing.md,
@@ -1170,11 +1316,11 @@ const styles = StyleSheet.create({
     },
     tableContainer: {
         flex: 1,
-        backgroundColor: colors.white,
-        borderRadius: borderRadius.lg,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: 24,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: colors.neutral[200],
+        borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     tableHeaderRow: {
         flexDirection: 'row',
@@ -1601,33 +1747,46 @@ const styles = StyleSheet.create({
     // Tab Styles
     tabContainer: {
         paddingHorizontal: spacing.lg,
-        paddingBottom: 8,
-        paddingTop: 8,
-        flexDirection: 'row',
-        backgroundColor: colors.white,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.neutral[100],
+        paddingVertical: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.3)',
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        marginTop: 10,
+    },
+    tabScrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        gap: 12,
     },
     tabItem: {
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: borderRadius.md,
-        marginRight: spacing.sm,
-        backgroundColor: colors.neutral[50],
+        paddingHorizontal: 24,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
         borderWidth: 1,
-        borderColor: colors.neutral[200],
+        borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     tabItemSelected: {
         backgroundColor: colors.primary.main,
         borderColor: colors.primary.main,
+        shadowColor: colors.primary.main,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 5,
     },
     tabText: {
         fontFamily: fonts.medium,
-        fontSize: 13,
+        fontSize: 14,
         color: colors.neutral[600],
     },
     tabTextSelected: {
         color: colors.white,
+        fontFamily: fonts.bold,
     },
 
     sportBadgeSmall: {
@@ -1807,5 +1966,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: fonts.regular,
         marginTop: spacing.sm,
+    },
+    emptyContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 100,
     },
 });

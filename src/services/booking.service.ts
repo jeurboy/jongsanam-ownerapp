@@ -147,6 +147,7 @@ export const bookingService = {
             return {
                 id: item.id,
                 courtId: item.facilityId,
+                court: { id: item.facilityId, name: item.facilityName }, // Include facility name
                 date: dateStr,
                 timeSlotStart: item.entryTime, // Use full ISO
                 timeSlotEnd: item.exitTime,     // Use full ISO
@@ -176,6 +177,27 @@ export const bookingService = {
 
         if (response.error) {
             console.error('Error updating booking:', response.error);
+            throw new Error(response.error);
+        }
+
+        return response.data;
+    },
+
+    async updateCapacityBooking(id: string, payload: {
+        facilityId?: string;
+        date?: string;
+        startTime?: string;
+        endTime?: string;
+        customerName?: string;
+        customerPhone?: string;
+        price?: number;
+        status?: string;
+    }): Promise<Booking | null> {
+        // Use the same endpoint as regular bookings - the backend handles both types
+        const response = await apiService.put<Booking>(`/api/owner/bookings/${id}`, payload);
+
+        if (response.error) {
+            console.error('Error updating capacity booking:', response.error);
             throw new Error(response.error);
         }
 
