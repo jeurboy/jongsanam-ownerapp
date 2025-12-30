@@ -30,26 +30,21 @@ const HOME_BG_IMAGE = require('../assets/images/home_bg.png');
 const MENU_ITEMS = [
     {
         id: 'overview',
-        title: 'ภาพรวม',
-        subtitle: 'สรุปสถานะสนาม',
-        iconName: 'view-dashboard',
-        color: '#EEF2FF', // Light Indigo
-        accent: '#4F46E5',
+        title: 'หน้าหลัก',
+        image: require('../assets/launcher/dashboard_flat.png'),
+        accent: '#6366F1',
     },
     {
         id: 'booking',
-        title: 'จัดการการจองสนาม',
-        subtitle: 'ดูตารางและจัดการคิว',
-        iconName: 'calendar-check',
-        color: '#F0FDF4', // Light Green
+        title: 'จัดการการจอง',
+        image: require('../assets/launcher/booking_flat.png'),
         accent: '#10B981',
     },
     {
         id: 'customer',
-        title: 'รายชื่อลูกค้า',
-        subtitle: 'ข้อมูลผู้ใช้บริการ',
+        title: 'จัดการสมาชิก',
+        isVector: true,
         iconName: 'account-group',
-        color: '#FEFCE8', // Light Yellow
         accent: '#F59E0B',
     },
 ];
@@ -69,13 +64,11 @@ export const HomeScreen = () => {
             const result = await businessService.getBusinesses();
             setBusinesses(result.businesses);
 
-            // Check for saved selection
             const savedId = await AsyncStorage.getItem('SELECTED_BUSINESS_ID');
 
             if (savedId && result.businesses.some(b => b.id === savedId)) {
                 setSelectedBusinessId(savedId);
             } else if (result.businesses.length > 0 && !selectedBusinessId) {
-                // Auto-select first if no saved or saved not found
                 setSelectedBusinessId(result.businesses[0].id);
             }
         } catch (error) {
@@ -119,84 +112,57 @@ export const HomeScreen = () => {
                     containerStyle={styles.businessSelectorContainer}
                 />
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <MaterialCommunityIcons name="logout" size={24} color={colors.error} />
+                    <MaterialCommunityIcons name="logout" size={24} color={colors.neutral[500]} />
                 </TouchableOpacity>
             </View>
         </View>
     );
 
-    const renderHeader = () => (
-        <View style={styles.headerContainer}>
-            <Image
-                source={HOME_BG_IMAGE}
-                style={styles.headerBackground}
-                resizeMode="cover"
-            />
-            <View style={styles.headerContentOverlay}>
-                <View style={styles.headerTop}>
-                    <View>
-                        <Text style={styles.headerSubtitle}>ยินดีต้อนรับ,</Text>
-                        <Text style={styles.headerTitle}>{user?.username || 'Owner'}</Text>
-                    </View>
-                    <View style={styles.profileAvatar}>
-                        <Text style={styles.profileInitials}>
-                            {user?.username?.substring(0, 2).toUpperCase() || 'JS'}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Quick Stats Cards in Header */}
-                <View style={styles.statsRow}>
-                    <View style={[styles.statBadge, { backgroundColor: 'rgba(59, 130, 246, 0.9)' }]}>
-                        <MaterialCommunityIcons name="calendar-today" size={24} color={colors.white} style={styles.statIcon} />
-                        <View>
-                            <Text style={styles.statBadgeValue}>0</Text>
-                            <Text style={styles.statBadgeLabel}>คิววันนี้</Text>
-                        </View>
-                    </View>
-                    <View style={[styles.statBadge, { backgroundColor: 'rgba(139, 92, 246, 0.9)' }]}>
-                        <MaterialCommunityIcons name="cash-multiple" size={24} color={colors.white} style={styles.statIcon} />
-                        <View>
-                            <Text style={styles.statBadgeValue}>0</Text>
-                            <Text style={styles.statBadgeLabel}>รายได้ (บาท)</Text>
-                        </View>
-                    </View>
-                </View>
-            </View>
-        </View>
-    );
-
-    const renderMenuItem = (item: typeof MENU_ITEMS[0]) => (
+    const renderLauncherItem = (item: typeof MENU_ITEMS[0]) => (
         <TouchableOpacity
             key={item.id}
-            style={[styles.menuCard, { backgroundColor: colors.white }]}
+            style={styles.launcherCard}
             activeOpacity={0.7}
             onPress={() => {
-                // Map legacy menu items to tabs if possible
                 if (item.id === 'booking') setActiveTab('booking');
                 else if (item.id === 'customer') setActiveTab('users');
                 else if (item.id === 'overview') setActiveTab('overview');
             }}
         >
-            <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
-                <MaterialCommunityIcons name={item.iconName} size={32} color={item.accent} />
+            <View style={styles.imageContainer}>
+                {item.isVector ? (
+                    <View style={styles.vectorIconWrapper}>
+                        <MaterialCommunityIcons name={item.iconName as any} size={140} color={item.accent} />
+                    </View>
+                ) : (
+                    <Image source={item.image} style={styles.launcherImage} resizeMode="contain" />
+                )}
             </View>
-            <Text style={styles.menuCardTitle}>{item.title}</Text>
-            <View style={[styles.indicator, { backgroundColor: item.accent }]} />
+            <Text style={styles.launcherLabel}>{item.title}</Text>
         </TouchableOpacity>
     );
 
     const renderOverview = () => (
-        <ScrollView
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-        >
-            {renderHeader()}
-            <Text style={styles.sectionTitle}>เมนูหลัก</Text>
-            <View style={styles.gridContainer}>
-                {MENU_ITEMS.map(renderMenuItem)}
-            </View>
-        </ScrollView>
+        <View style={styles.launcherContainer}>
+            <ScrollView contentContainerStyle={styles.launcherContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.launcherHeader}>
+                    <Text style={styles.welcomeText}>สวัสดีครับ,</Text>
+                    <Text style={styles.ownerName}>{user?.username || 'Owner'}</Text>
+                </View>
+
+                <View style={styles.launcherGrid}>
+                    {MENU_ITEMS.map(renderLauncherItem)}
+                </View>
+
+                {/* Bottom Status Card */}
+                <View style={styles.statusFooter}>
+                    <View style={styles.statusCard}>
+                        <View style={styles.statusIndicator} />
+                        <Text style={styles.statusText}>ระบบจองสนามของคุณ พร้อมใช้งานปกติ</Text>
+                    </View>
+                </View>
+            </ScrollView>
+        </View>
     );
 
     const renderContent = () => {
@@ -213,24 +179,18 @@ export const HomeScreen = () => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-            {/* SafeAreaView wrapped inside DashboardLayout or used as container?
-                 Since we have a full screen sidebar, we want the Safe Area to apply mainly to the content or the sidebar independently.
-                 Actually, SafeAreaProvider is at root.
-                 DashboardLayout is a flex-row container. 
-                 Sidebar needs padding top/bottom for safe area.
-                 Content needs safe area.
-                 Let's wrap the whole thing in SafeAreaView for now, but `edges` prop might be needed for sidebar vs content.
-                 Alternatively, use SafeAreaView as the root container.
-            */}
-            <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-                <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
-                    <View style={{ flex: 1 }}>
-                        <StickyHeader />
-                        {renderContent()}
-                    </View>
-                </DashboardLayout>
-            </SafeAreaView>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+
+            <DashboardLayout
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                isTransparent={true}
+            >
+                <View style={{ flex: 1 }}>
+                    {activeTab !== 'overview' && <StickyHeader />}
+                    {renderContent()}
+                </View>
+            </DashboardLayout>
         </View>
     );
 };
@@ -238,44 +198,25 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.neutral[50],
+        backgroundColor: '#FFFFFF',
     },
     safeArea: {
         flex: 1,
-        backgroundColor: '#1E1E2E', // Match sidebar color to avoid safe area white bars on left
-    },
-    content: {
-        padding: responsive.spacing.lg,
-        paddingBottom: responsive.spacing.xxl,
+        backgroundColor: 'transparent',
     },
     stickyHeader: {
-        backgroundColor: colors.neutral[50],
-        paddingHorizontal: responsive.spacing.lg,
-        paddingTop: 8,
-        paddingBottom: 4,
+        backgroundColor: 'transparent',
+        paddingLeft: 40, // Increased to align with content below
+        paddingRight: spacing.lg,
+        paddingTop: 12,
+        paddingBottom: 8,
         zIndex: 10,
-    },
-    headerContainer: {
-        marginBottom: spacing.xl,
-        borderRadius: borderRadius.xl,
-        overflow: 'hidden',
-        backgroundColor: colors.primary.main,
-        position: 'relative',
-    },
-    headerBackground: {
-        ...StyleSheet.absoluteFillObject,
-        width: '100%',
-        height: '100%',
-    },
-    headerContentOverlay: {
-        padding: responsive.spacing.lg,
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        borderBottomWidth: 0,
     },
     topRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.md,
-        gap: spacing.sm,
+        gap: spacing.md,
     },
     businessSelectorContainer: {
         flex: 1,
@@ -283,132 +224,108 @@ const styles = StyleSheet.create({
     logoutButton: {
         width: 42,
         height: 42,
-        borderRadius: borderRadius.md,
-        backgroundColor: colors.white,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
-        borderColor: colors.neutral[200],
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
-    headerTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.lg,
-    },
-    headerSubtitle: {
-        fontSize: responsive.fontSize.sm,
-        color: colors.neutral[500],
-        marginBottom: 2,
-        fontFamily: 'Kanit-Regular',
-    },
-    headerTitle: {
-        fontSize: responsive.fontSize.xl,
-        color: colors.neutral[900],
-        fontWeight: '700',
-        fontFamily: 'Kanit-Bold',
-    },
-    profileAvatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: colors.primary.main,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: colors.primary.main,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    profileInitials: {
-        color: colors.white,
-        fontSize: responsive.fontSize.lg,
-        fontWeight: 'bold',
-    },
-    statsRow: {
-        flexDirection: 'row',
-        gap: spacing.md,
-    },
-    statBadge: {
+    launcherContainer: {
         flex: 1,
-        borderRadius: borderRadius.xl,
-        padding: responsive.spacing.md,
+        backgroundColor: 'transparent',
+    },
+    launcherContent: {
+        flexGrow: 1,
+        padding: 40,
+        justifyContent: 'center',
+    },
+    launcherHeader: {
+        marginBottom: 80,
+    },
+    welcomeText: {
+        fontFamily: 'Kanit-Regular',
+        fontSize: 26,
+        color: colors.neutral[500],
+    },
+    ownerName: {
+        fontFamily: 'Kanit-Bold',
+        fontSize: 52,
+        color: colors.neutral[900],
+        marginTop: -5,
+    },
+    launcherGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: colors.black,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    statIcon: {
-        marginRight: spacing.sm,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        textAlign: 'center',
-        textAlignVertical: 'center',
-    },
-    statBadgeValue: {
-        fontSize: responsive.fontSize.lg,
-        fontWeight: 'bold',
-        color: colors.white,
-    },
-    statBadgeLabel: {
-        fontSize: responsive.fontSize.xs,
-        color: 'rgba(255,255,255,0.9)',
-    },
-    sectionTitle: {
-        fontSize: responsive.fontSize.lg,
-        fontWeight: '600',
-        color: colors.neutral[800],
-        marginBottom: spacing.md,
-        fontFamily: 'Kanit-SemiBold',
-    },
-    gridContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        marginBottom: spacing.xl,
+        flexWrap: 'wrap',
+        gap: 32,
     },
-    menuCard: {
-        width: '48%',
-        aspectRatio: 1,
-        borderRadius: borderRadius.xl,
-        padding: responsive.spacing.lg,
-        marginBottom: spacing.md,
-        justifyContent: 'center',
+    launcherCard: {
+        width: '28%',
+        aspectRatio: 0.85,
         alignItems: 'center',
-        shadowColor: colors.neutral[300],
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 4,
-        position: 'relative',
-    },
-    iconContainer: {
-        width: 64,
-        height: 64,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.7)',
         borderRadius: 32,
+        padding: 20,
+        // Soft Claymorphism shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+        elevation: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.8)',
+    },
+    imageContainer: {
+        width: '100%',
+        height: '75%',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.md,
     },
-    menuCardTitle: {
-        fontSize: responsive.fontSize.md,
-        fontWeight: '600',
-        color: colors.neutral[800],
-        textAlign: 'center',
+    launcherImage: {
+        width: '110%',
+        height: '110%',
+    },
+    vectorIconWrapper: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    launcherLabel: {
+        fontFamily: 'Kanit-SemiBold',
+        fontSize: 20,
+        color: colors.neutral[700],
+        marginTop: 10,
+    },
+    statusFooter: {
+        marginTop: 100,
+        alignItems: 'center',
+    },
+    statusCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.white,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+        gap: 12,
+    },
+    statusIndicator: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#10B981',
+    },
+    statusText: {
         fontFamily: 'Kanit-Medium',
-    },
-    indicator: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        fontSize: 15,
+        color: colors.neutral[500],
     },
 });

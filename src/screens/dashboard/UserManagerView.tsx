@@ -25,8 +25,11 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.neutral[50],
-        padding: spacing.lg,
+        backgroundColor: 'transparent',
+        paddingLeft: 40,
+        paddingRight: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.lg,
     },
     header: {
         marginBottom: spacing.xl,

@@ -83,6 +83,8 @@ const CAPACITY_SPORTS = ['fitness', 'swimming', 'gym', 'yoga', 'boxing'];
 
 const getCourtCapacity = (court: Court): number => {
     const c = court as any;
+    // Check both capacity and maxCapacity (API returns maxCapacity)
+    if (c.maxCapacity) return c.maxCapacity;
     if (c.capacity) return c.capacity;
     if (c.isCapacity) return 20; // Default if flagged but no number
 
@@ -216,7 +218,15 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     // Merge consecutive bookings from same customer (phone number) for the same court
     const getMergedBookingsForCourt = (courtId: string) => {
         const courtBookings = bookings
-            .filter(b => (b.court?.id || b.courtId) === courtId)
+            .filter(b => {
+                // Must match the court ID
+                if ((b.court?.id || b.courtId) !== courtId) return false;
+                // Exclude capacity bookings - they should only show in capacity view
+                if ((b as any).isCapacity === true) return false;
+                // Exclude cancelled bookings
+                if (b.status === BookingStatus.CANCELLED) return false;
+                return true;
+            })
             .sort((a, b) => new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime());
 
         const merged: MergedBooking[] = [];

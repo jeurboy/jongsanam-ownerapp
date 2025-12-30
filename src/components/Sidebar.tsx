@@ -9,29 +9,25 @@ export type SidebarTab = 'overview' | 'booking' | 'users' | 'settings';
 interface SidebarProps {
     activeTab: SidebarTab;
     onTabChange: (tab: SidebarTab) => void;
+    isTransparent?: boolean;
 }
 
 const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
-    { id: 'overview', icon: 'view-dashboard', label: 'ภาพรวม' },
-    { id: 'booking', icon: 'calendar-check', label: 'การจอง' },
-    { id: 'users', icon: 'account-group', label: 'ผู้ใช้งาน' },
+    { id: 'overview', icon: 'home', label: 'หน้าหลัก' },
+    { id: 'booking', icon: 'calendar-clock', label: 'จัดการการจอง' },
+    { id: 'users', icon: 'account-group', label: 'จัดการสมาชิก' },
+    { id: 'settings', icon: 'cog-outline', label: 'ตั้งค่า' },
 ];
 
-export const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
+export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps) => {
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.xl) }]}>
-            {/* Logo Area */}
-            <View style={styles.logoContainer}>
-                <View style={styles.logoBadge}>
-                    <MaterialCommunityIcons name="trophy-variant" size={24} color={colors.white} />
-                </View>
-                <Text style={styles.appName}>JongSan</Text>
-            </View>
-
-            {/* Menu Items */}
-            <View style={styles.menuContainer}>
+        <View style={[
+            styles.container,
+            { paddingTop: Math.max(insets.top, spacing.lg) }
+        ]}>
+            <View style={styles.glassNav}>
                 {MENU_ITEMS.map((item) => {
                     const isActive = activeTab === item.id;
                     return (
@@ -42,39 +38,22 @@ export const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
                                 isActive && styles.menuItemActive
                             ]}
                             onPress={() => onTabChange(item.id)}
-                            activeOpacity={0.8}
+                            activeOpacity={0.7}
                         >
-                            <View style={styles.iconContainer}>
-                                <MaterialCommunityIcons
-                                    name={item.icon}
-                                    size={24}
-                                    color={isActive ? colors.primary.main : colors.neutral[400]}
-                                />
-                            </View>
-                            {/* Optional: Add Label if user wants expanded sidebar later.
-                                For now, design implies icons or compact mode, but let's add text for clarity 
-                                and hide it or style it minimally if needed. 
-                                Based on the image, it's a narrow bar with icons. 
-                                Let's keep it icon-centric but maybe show tooltip or keep it simple.
-                            */}
+                            <MaterialCommunityIcons
+                                name={isActive ? item.icon.replace('-outline', '') : (item.icon.includes('-outline') ? item.icon : `${item.icon}`)}
+                                size={28}
+                                color={isActive ? colors.primary.main : colors.neutral[400]}
+                            />
+                            <Text style={[
+                                styles.menuLabel,
+                                isActive && styles.menuLabelActive
+                            ]}>
+                                {item.label}
+                            </Text>
                         </TouchableOpacity>
                     );
                 })}
-            </View>
-
-            {/* Bottom Actions */}
-            <View style={styles.bottomContainer}>
-                <TouchableOpacity style={styles.menuItem}>
-                    <MaterialCommunityIcons name="cog" size={24} color={colors.neutral[400]} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.menuItem, { marginTop: spacing.sm }]}>
-                    <View style={styles.avatarPlaceholder}>
-                        <Image
-                            source={{ uri: 'https://ui-avatars.com/api/?name=Admin&background=random' }}
-                            style={styles.avatar}
-                        />
-                    </View>
-                </TouchableOpacity>
             </View>
         </View>
     );
@@ -82,77 +61,52 @@ export const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
 
 const styles = StyleSheet.create({
     container: {
-        width: 80, // Collapsed style width
-        backgroundColor: '#1E1E2E', // Dark Navy background
+        width: 100,
         height: '100%',
-        paddingVertical: spacing.xl,
         alignItems: 'center',
-        // borderTopRightRadius: 20, // Removed for full height edge-to-edge
-        // borderBottomRightRadius: 20, // Removed for full height edge-to-edge
+        paddingHorizontal: 8,
     },
-    logoContainer: {
-        marginBottom: spacing.xxl,
-        alignItems: 'center',
-        gap: spacing.xs,
-    },
-    logoBadge: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: colors.primary.main,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    appName: {
-        color: colors.white,
-        fontSize: 10,
-        fontWeight: 'bold',
-        marginTop: 4,
-        display: 'none', // Hide for compact sidebar
-    },
-    menuContainer: {
-        flex: 1,
+    glassNav: {
         width: '100%',
-        gap: spacing.md,
+        backgroundColor: 'rgba(255, 255, 255, 0.45)', // Even more transparent
+        borderRadius: 28,
+        paddingVertical: 15,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        marginTop: 10,
+        // Shadow for the glass card
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 10,
+        elevation: 2,
     },
     menuItem: {
-        width: 60,
-        height: 60,
+        width: '88%',
+        paddingVertical: 12,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
-        borderRadius: 16,
     },
     menuItemActive: {
         backgroundColor: colors.white,
-        // Add curve effect hack if needed, or just clean white rounded square
-        // The image shows a complex curve. A simple rounded rect is a good start.
-        shadowColor: colors.black,
-        shadowOffset: { width: 4, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowColor: colors.primary.main,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
-    iconContainer: {
-        width: '100%',
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
+    menuLabel: {
+        fontFamily: 'Regular',
+        fontSize: 10,
+        color: colors.neutral[600],
+        marginTop: 4,
+        textAlign: 'center',
     },
-    bottomContainer: {
-        marginTop: 'auto',
-        gap: spacing.sm,
-    },
-    avatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: colors.white,
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
+    menuLabelActive: {
+        fontFamily: 'SemiBold',
+        color: colors.primary.main,
     },
 });

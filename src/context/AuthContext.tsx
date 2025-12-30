@@ -38,21 +38,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const checkAuth = async () => {
         try {
-            const accessToken = await authService.getStoredAccessToken();
             const refreshTokenValue = await authService.getStoredRefreshToken();
             const user = await authService.getStoredUser();
 
             // Delay splash screen for 3 seconds
             await new Promise<void>(resolve => setTimeout(resolve, 3000));
 
-            if (accessToken && refreshTokenValue && user) {
-                setState({
-                    user,
-                    accessToken,
-                    refreshToken: refreshTokenValue,
-                    isLoading: false,
-                    isAuthenticated: true,
-                });
+            if (refreshTokenValue && user) {
+                // Try to refresh access token to ensure it's valid
+                const newAccessToken = await authService.refreshAccessToken();
+
+                if (newAccessToken) {
+                    setState({
+                        user,
+                        accessToken: newAccessToken,
+                        refreshToken: refreshTokenValue,
+                        isLoading: false,
+                        isAuthenticated: true,
+                    });
+                } else {
+                    // Refresh failed - clear auth state
+                    setState({
+                        user: null,
+                        accessToken: null,
+                        refreshToken: null,
+                        isLoading: false,
+                        isAuthenticated: false,
+                    });
+                }
             } else {
                 setState({
                     user: null,
