@@ -1,0 +1,316 @@
+diff --git a/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h b/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h
+index 407f57f..c76cc95 100644
+--- a/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h
++++ b/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h
+@@ -4,48 +4,56 @@
+ 
+ #import <functional>
+ 
+-#import <jsi/jsi.h>
++#import <ExpoModulesCore/ObjectDeallocator.h>
+ #import <React/RCTBridgeModule.h>
++#include <ReactCommon/CallInvoker.h>
+ #import <ReactCommon/TurboModuleUtils.h>
+-#import <ExpoModulesCore/ObjectDeallocator.h>
++#import <jsi/jsi.h>
+ 
+ namespace jsi = facebook::jsi;
+ namespace react = facebook::react;
+ 
+-namespace expo
+-{
++namespace expo {
+ 
+ #pragma mark - Promises
+ 
+-    using PromiseInvocationBlock = void (^)(RCTPromiseResolveBlock resolveWrapper, RCTPromiseRejectBlock rejectWrapper);
++using PromiseInvocationBlock = void (^)(RCTPromiseResolveBlock resolveWrapper,
++                                        RCTPromiseRejectBlock rejectWrapper);
+ 
+-    void callPromiseSetupWithBlock(jsi::Runtime &runtime, std::shared_ptr<react::CallInvoker> jsInvoker, std::shared_ptr<react::Promise> promise, PromiseInvocationBlock setupBlock);
++void callPromiseSetupWithBlock(jsi::Runtime &runtime,
++                               std::shared_ptr<react::CallInvoker> jsInvoker,
++                               std::shared_ptr<react::Promise> promise,
++                               PromiseInvocationBlock setupBlock);
+ 
+ #pragma mark - Weak objects
+ 
+-    /**
+-     Checks whether the `WeakRef` class is available in the given runtime.
+-     According to the docs, it is unimplemented in JSC prior to iOS 14.5.
+-     As of the time of writing this comment it's also unimplemented in Hermes
+-     where you should use `jsi::WeakObject` instead.
+-     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakRef
+-     */
+-    bool isWeakRefSupported(jsi::Runtime &runtime);
+-
+-    /**
+-     Creates the `WeakRef` with given JSI object. You should first use `isWeakRefSupported`
+-     to check whether this feature is supported by the runtime.
+-     */
+-    std::shared_ptr<jsi::Object> createWeakRef(jsi::Runtime &runtime, std::shared_ptr<jsi::Object> object);
+-
+-    /**
+-     Returns the `WeakRef` object's target object, or an empty pointer if the target object has been reclaimed.
+-     */
+-    std::shared_ptr<jsi::Object> derefWeakRef(jsi::Runtime &runtime, std::shared_ptr<jsi::Object> object);
++/**
++ Checks whether the `WeakRef` class is available in the given runtime.
++ According to the docs, it is unimplemented in JSC prior to iOS 14.5.
++ As of the time of writing this comment it's also unimplemented in Hermes
++ where you should use `jsi::WeakObject` instead.
++ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakRef
++ */
++bool isWeakRefSupported(jsi::Runtime &runtime);
++
++/**
++ Creates the `WeakRef` with given JSI object. You should first use
++ `isWeakRefSupported` to check whether this feature is supported by the runtime.
++ */
++std::shared_ptr<jsi::Object> createWeakRef(jsi::Runtime &runtime,
++                                           std::shared_ptr<jsi::Object> object);
++
++/**
++ Returns the `WeakRef` object's target object, or an empty pointer if the target
++ object has been reclaimed.
++ */
++std::shared_ptr<jsi::Object> derefWeakRef(jsi::Runtime &runtime,
++                                          std::shared_ptr<jsi::Object> object);
+ 
+ #pragma mark - Errors
+ 
+-    jsi::Value makeCodedError(jsi::Runtime &runtime, NSString *code, NSString *message);
++jsi::Value makeCodedError(jsi::Runtime &runtime, NSString *code,
++                          NSString *message);
+ 
+ } // namespace expo
+ 
+@@ -57,7 +65,8 @@ namespace expo
+ NS_SWIFT_NAME(JSIUtils)
+ @interface EXJSIUtils : NSObject
+ 
+-+ (nonnull EXJavaScriptObject *)createNativeModuleObject:(nonnull EXJavaScriptRuntime *)runtime;
+++ (nonnull EXJavaScriptObject *)createNativeModuleObject:
++    (nonnull EXJavaScriptRuntime *)runtime;
+ 
+ + (void)emitEvent:(nonnull NSString *)eventName
+          toObject:(nonnull EXJavaScriptObject *)object
+diff --git a/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.mm b/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.mm
+index a566e53..80b821e 100644
+--- a/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.mm
++++ b/node_modules/expo-modules-core/ios/JSI/EXJSIUtils.mm
+@@ -4,16 +4,21 @@
+ 
+ #import <ExpoModulesCore/EXJSIConversions.h>
+ #import <ExpoModulesCore/EXJSIUtils.h>
++#import <ExpoModulesCore/EventEmitter.h>
+ #import <ExpoModulesCore/JSIUtils.h>
+ #import <ExpoModulesCore/NativeModule.h>
+-#import <ExpoModulesCore/EventEmitter.h>
++#include <react/bridging/CallbackWrapper.h>
+ 
+ namespace expo {
+ 
+-void callPromiseSetupWithBlock(jsi::Runtime &runtime, std::shared_ptr<CallInvoker> jsInvoker, std::shared_ptr<Promise> promise, PromiseInvocationBlock setupBlock)
+-{
+-  auto weakResolveWrapper = react::CallbackWrapper::createWeak(promise->resolve_.getFunction(runtime), runtime, jsInvoker);
+-  auto weakRejectWrapper = react::CallbackWrapper::createWeak(promise->reject_.getFunction(runtime), runtime, jsInvoker);
++void callPromiseSetupWithBlock(jsi::Runtime &runtime,
++                               std::shared_ptr<CallInvoker> jsInvoker,
++                               std::shared_ptr<Promise> promise,
++                               PromiseInvocationBlock setupBlock) {
++  auto weakResolveWrapper = react::CallbackWrapper::createWeak(
++      promise->resolve_.getFunction(runtime), runtime, jsInvoker);
++  auto weakRejectWrapper = react::CallbackWrapper::createWeak(
++      promise->reject_.getFunction(runtime), runtime, jsInvoker);
+ 
+   __block BOOL isSettled = NO;
+ 
+@@ -29,54 +34,57 @@ void callPromiseSetupWithBlock(jsi::Runtime &runtime, std::shared_ptr<CallInvoke
+       return;
+     }
+ 
+-    strongResolveWrapper->jsInvoker().invokeAsync([weakResolveWrapper, weakRejectWrapper, result]() {
+-      auto strongResolveWrapper2 = weakResolveWrapper.lock();
+-      auto strongRejectWrapper2 = weakRejectWrapper.lock();
+-      if (!strongResolveWrapper2 || !strongRejectWrapper2) {
+-        return;
+-      }
++    strongResolveWrapper->jsInvoker().invokeAsync(
++        [weakResolveWrapper, weakRejectWrapper, result]() {
++          auto strongResolveWrapper2 = weakResolveWrapper.lock();
++          auto strongRejectWrapper2 = weakRejectWrapper.lock();
++          if (!strongResolveWrapper2 || !strongRejectWrapper2) {
++            return;
++          }
+ 
+-      jsi::Runtime &rt = strongResolveWrapper2->runtime();
+-      jsi::Value arg = convertObjCObjectToJSIValue(rt, result);
+-      strongResolveWrapper2->callback().call(rt, arg);
++          jsi::Runtime &rt = strongResolveWrapper2->runtime();
++          jsi::Value arg = convertObjCObjectToJSIValue(rt, result);
++          strongResolveWrapper2->callback().call(rt, arg);
+ 
+-      strongResolveWrapper2->destroy();
+-      strongRejectWrapper2->destroy();
+-    });
++          strongResolveWrapper2->destroy();
++          strongRejectWrapper2->destroy();
++        });
+ 
+     isSettled = YES;
+   };
+ 
+-  RCTPromiseRejectBlock rejectBlock = ^(NSString *code, NSString *message, NSError *error) {
+-    if (isSettled) {
+-      // The promise is already either resolved or rejected.
+-      return;
+-    }
++  RCTPromiseRejectBlock rejectBlock =
++      ^(NSString *code, NSString *message, NSError *error) {
++        if (isSettled) {
++          // The promise is already either resolved or rejected.
++          return;
++        }
+ 
+-    auto strongResolveWrapper = weakResolveWrapper.lock();
+-    auto strongRejectWrapper = weakRejectWrapper.lock();
+-    if (!strongResolveWrapper || !strongRejectWrapper) {
+-      return;
+-    }
++        auto strongResolveWrapper = weakResolveWrapper.lock();
++        auto strongRejectWrapper = weakRejectWrapper.lock();
++        if (!strongResolveWrapper || !strongRejectWrapper) {
++          return;
++        }
+ 
+-    strongRejectWrapper->jsInvoker().invokeAsync([weakResolveWrapper, weakRejectWrapper, code, message]() {
+-      auto strongResolveWrapper2 = weakResolveWrapper.lock();
+-      auto strongRejectWrapper2 = weakRejectWrapper.lock();
+-      if (!strongResolveWrapper2 || !strongRejectWrapper2) {
+-        return;
+-      }
++        strongRejectWrapper->jsInvoker().invokeAsync(
++            [weakResolveWrapper, weakRejectWrapper, code, message]() {
++              auto strongResolveWrapper2 = weakResolveWrapper.lock();
++              auto strongRejectWrapper2 = weakRejectWrapper.lock();
++              if (!strongResolveWrapper2 || !strongRejectWrapper2) {
++                return;
++              }
+ 
+-      jsi::Runtime &rt = strongRejectWrapper2->runtime();
+-      jsi::Value jsError = makeCodedError(rt, code, message);
++              jsi::Runtime &rt = strongRejectWrapper2->runtime();
++              jsi::Value jsError = makeCodedError(rt, code, message);
+ 
+-      strongRejectWrapper2->callback().call(rt, jsError);
++              strongRejectWrapper2->callback().call(rt, jsError);
+ 
+-      strongResolveWrapper2->destroy();
+-      strongRejectWrapper2->destroy();
+-    });
++              strongResolveWrapper2->destroy();
++              strongRejectWrapper2->destroy();
++            });
+ 
+-    isSettled = YES;
+-  };
++        isSettled = YES;
++      };
+ 
+   setupBlock(resolveBlock, rejectBlock);
+ }
+@@ -87,22 +95,24 @@ bool isWeakRefSupported(jsi::Runtime &runtime) {
+   return runtime.global().hasProperty(runtime, "WeakRef");
+ }
+ 
+-std::shared_ptr<jsi::Object> createWeakRef(jsi::Runtime &runtime, std::shared_ptr<jsi::Object> object) {
+-  jsi::Object weakRef = runtime
+-    .global()
+-    .getProperty(runtime, "WeakRef")
+-    .asObject(runtime)
+-    .asFunction(runtime)
+-    .callAsConstructor(runtime, jsi::Value(runtime, *object))
+-    .asObject(runtime);
++std::shared_ptr<jsi::Object>
++createWeakRef(jsi::Runtime &runtime, std::shared_ptr<jsi::Object> object) {
++  jsi::Object weakRef =
++      runtime.global()
++          .getProperty(runtime, "WeakRef")
++          .asObject(runtime)
++          .asFunction(runtime)
++          .callAsConstructor(runtime, jsi::Value(runtime, *object))
++          .asObject(runtime);
+   return std::make_shared<jsi::Object>(std::move(weakRef));
+ }
+ 
+-std::shared_ptr<jsi::Object> derefWeakRef(jsi::Runtime &runtime, std::shared_ptr<jsi::Object> object) {
++std::shared_ptr<jsi::Object> derefWeakRef(jsi::Runtime &runtime,
++                                          std::shared_ptr<jsi::Object> object) {
+   jsi::Value ref = object->getProperty(runtime, "deref")
+-    .asObject(runtime)
+-    .asFunction(runtime)
+-    .callWithThis(runtime, *object);
++                       .asObject(runtime)
++                       .asFunction(runtime)
++                       .callWithThis(runtime, *object);
+ 
+   if (ref.isUndefined()) {
+     return nullptr;
+@@ -112,38 +122,39 @@ std::shared_ptr<jsi::Object> derefWeakRef(jsi::Runtime &runtime, std::shared_ptr
+ 
+ #pragma mark - Errors
+ 
+-jsi::Value makeCodedError(jsi::Runtime &runtime, NSString *code, NSString *message) {
++jsi::Value makeCodedError(jsi::Runtime &runtime, NSString *code,
++                          NSString *message) {
+   jsi::String jsCode = convertNSStringToJSIString(runtime, code);
+   jsi::String jsMessage = convertNSStringToJSIString(runtime, message);
+ 
+-  return runtime
+-    .global()
+-    .getProperty(runtime, "ExpoModulesCore_CodedError")
+-    .asObject(runtime)
+-    .asFunction(runtime)
+-    .callAsConstructor(runtime, {
+-      jsi::Value(runtime, jsCode),
+-      jsi::Value(runtime, jsMessage)
+-    });
++  return runtime.global()
++      .getProperty(runtime, "ExpoModulesCore_CodedError")
++      .asObject(runtime)
++      .asFunction(runtime)
++      .callAsConstructor(runtime, {jsi::Value(runtime, jsCode),
++                                   jsi::Value(runtime, jsMessage)});
+ }
+ 
+ } // namespace expo
+ 
+ @implementation EXJSIUtils
+ 
+-+ (nonnull EXJavaScriptObject *)createNativeModuleObject:(nonnull EXJavaScriptRuntime *)runtime
+-{
+-  std::shared_ptr<jsi::Object> nativeModule = std::make_shared<jsi::Object>(expo::NativeModule::createInstance(*[runtime get]));
+++ (nonnull EXJavaScriptObject *)createNativeModuleObject:
++    (nonnull EXJavaScriptRuntime *)runtime {
++  std::shared_ptr<jsi::Object> nativeModule = std::make_shared<jsi::Object>(
++      expo::NativeModule::createInstance(*[runtime get]));
+   return [[EXJavaScriptObject alloc] initWith:nativeModule runtime:runtime];
+ }
+ 
+ + (void)emitEvent:(nonnull NSString *)eventName
+          toObject:(nonnull EXJavaScriptObject *)object
+     withArguments:(nonnull NSArray<id> *)arguments
+-        inRuntime:(nonnull EXJavaScriptRuntime *)runtime
+-{
+-  const std::vector<jsi::Value> argumentsVector(expo::convertNSArrayToStdVector(*[runtime get], arguments));
+-  expo::EventEmitter::emitEvent(*[runtime get], *[object get], [eventName UTF8String], std::move(argumentsVector));
++        inRuntime:(nonnull EXJavaScriptRuntime *)runtime {
++  const std::vector<jsi::Value> argumentsVector(
++      expo::convertNSArrayToStdVector(*[runtime get], arguments));
++  expo::EventEmitter::emitEvent(*[runtime get], *[object get],
++                                [eventName UTF8String],
++                                std::move(argumentsVector));
+ }
+ 
+ @end
