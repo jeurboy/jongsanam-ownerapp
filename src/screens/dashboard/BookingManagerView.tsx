@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions, TextInput, Alert, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { colors, fonts, spacing, borderRadius } from '../../theme/tokens';
 import { Court } from '../../types/court';
@@ -7,23 +7,102 @@ import { Booking, BookingStatus } from '../../types/booking';
 import { courtService } from '../../services/court.service';
 import { bookingService } from '../../services/booking.service';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { format, addHours, startOfDay, getHours, setHours, setMinutes, isSameDay, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { th } from 'date-fns/locale';
 
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
 const COURT_COL_WIDTH = 120;
-const HEADER_HEIGHT = 50;
+const HEADER_HEIGHT = 32; // Further reduced for thinner header
 const ROW_HEIGHT = 60; // Height per hour slot
 const START_HOUR = 8; // 08:00
 const END_HOUR = 24;  // 24:00 (Midnight)
 
-export const BookingManagerView = () => {
+const SPORT_LABELS: Record<string, string> = {
+    'badminton': 'แบดมินตัน',
+    'football': 'ฟุตบอล',
+    'futsal': 'ฟุตซอล',
+    'tennis': 'เทนนิส',
+    'basketball': 'บาสเกตบอล',
+    'volleyball': 'วอลเลย์บอล',
+    'swimming': 'ว่ายน้ำ',
+    'fitness': 'ฟิตเนส'
+};
+
+const getSportName = (id: string) => SPORT_LABELS[id] || id;
+
+interface BookingManagerViewProps {
+    businessId?: string | null;
+}
+
+interface MergedBooking {
+    id: string;
+    ids: string[];
+    customerName: string;
+    customerPhone: string;
+    timeSlotStart: string;
+    timeSlotEnd: string;
+    status: string;
+    bookings: Booking[];
+}
+
+// Helper to safely get sport type from court object (handling various potential API structures)
+const getCourtSportType = (court: Court): string | null => {
+    const c = court as any;
+
+    // 1. Try sportTypeIds (Expect Array of strings, but handle objects just in case)
+    if (c.sportTypeIds && Array.isArray(c.sportTypeIds) && c.sportTypeIds.length > 0) {
+        const first = c.sportTypeIds[0];
+        if (typeof first === 'string') return first;
+        if (typeof first === 'object' && first !== null) {
+            return (first as any).name || (first as any).id || null;
+        }
+    }
+
+    // 2. Try sports (Array of objects or strings)
+    if (c.sports && Array.isArray(c.sports) && c.sports.length > 0) {
+        const first = c.sports[0];
+        if (typeof first === 'string') return first;
+        if (typeof first === 'object' && first !== null) {
+            return (first as any).name || (first as any).id || null;
+        }
+    }
+
+    // 3. Try singular sportType (string or object)
+    if (c.sportType) {
+        if (typeof c.sportType === 'string') return c.sportType;
+        if (typeof c.sportType === 'object' && c.sportType !== null) {
+            return (c.sportType as any).name || (c.sportType as any).id || null;
+        }
+    }
+
+    return null;
+};
+
+const CAPACITY_SPORTS = ['fitness', 'swimming', 'gym', 'yoga', 'boxing'];
+
+const getCourtCapacity = (court: Court): number => {
+    const c = court as any;
+    if (c.capacity) return c.capacity;
+    if (c.isCapacity) return 20; // Default if flagged but no number
+
+    // Fallback based on sport type
+    const sport = getCourtSportType(court);
+    if (sport && CAPACITY_SPORTS.some(s => sport.toLowerCase().includes(s))) {
+        return 20; // Default generic capacity for these sports
+    }
+    return 1; // Default slot-based
+};
+
+
+
+export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     // State
     const [loading, setLoading] = useState(true);
     const [courts, setCourts] = useState<Court[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedSport, setSelectedSport] = useState<string>('ALL'); // New State
 
     // Refs for synchronized scrolling
     const headerScrollRef = useRef<ScrollView>(null);
@@ -47,18 +126,32 @@ export const BookingManagerView = () => {
         status: 'CONFIRMED'
     });
     const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+    const [expandedFacilityId, setExpandedFacilityId] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, [selectedDate]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            // 1. Fetch courts
-            const courtsData = await courtService.getAllOwnerCourts();
-            console.log('Courts loaded:', courtsData?.length || 0, courtsData);
-            setCourts(courtsData);
+            // 1. Fetch courts and capacity facilities
+            const [courtsData, facilitiesData] = await Promise.all([
+                courtService.getAllOwnerCourts(),
+                courtService.getCapacityFacilities()
+            ]);
+
+            const allCourts = [...courtsData, ...facilitiesData];
+
+            // Log structure for debugging
+            if (allCourts.length > 0) {
+                console.log('First court structure:', JSON.stringify(allCourts[0], null, 2));
+            }
+
+            // Filter by businessId if provided
+            let filteredCourts = allCourts;
+            if (businessId) {
+                filteredCourts = allCourts.filter(c => c.businessId === businessId);
+            }
+
+            console.log(`Courts: ${courtsData.length}, Facilities: ${facilitiesData.length}, Display: ${filteredCourts.length}`);
+            setCourts(filteredCourts);
 
             // 2. Fetch bookings for the date
             // API expects ISO timestamp in UTC
@@ -70,17 +163,44 @@ export const BookingManagerView = () => {
             const dateTo = new Date(selectedDate);
             dateTo.setHours(23, 59, 59, 999);
 
-            console.log('Fetching bookings from:', dateFrom.toISOString(), 'to:', dateTo.toISOString());
-            let bookingsData = await bookingService.getBookings(dateFrom.toISOString(), dateTo.toISOString(), undefined, undefined, 200);
-            console.log('Bookings loaded:', bookingsData?.length || 0, bookingsData);
+            // Adjust for timezone offset manually if needed, or rely on toISOString()
+            // toISOString() gives UTC.
+            const payload = {
+                startTime: dateFrom.toISOString(),
+                endTime: dateTo.toISOString()
+            };
 
+            console.log('Fetching bookings:', payload);
+
+            // Fetch from ownerBookingService
+            // Note: Currently we don't filter bookings by businessId in API call?
+            // If getBookings returns ALL bookings for owner, we might need to filter manually or API supports filtering.
+            // Assuming getBookings handles owner context.
+            // Fetch both regular and capacity bookings
+            const [regularBookings, capacityBookings] = await Promise.all([
+                bookingService.getBookings(payload.startTime, payload.endTime),
+                bookingService.getCapacityBookings(payload.startTime, payload.endTime, businessId || '9999')
+            ]);
+
+            const bookingsData = [...regularBookings, ...capacityBookings];
+            console.log('Bookings loaded:', bookingsData?.length || 0);
             setBookings(bookingsData || []);
         } catch (error) {
-            console.error('Failed to load booking data:', error);
+            console.error('Error loading data:', error);
+            Alert.alert('Error', 'Failed to load data');
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate, businessId]);
+
+    useEffect(() => {
+        setSelectedSport('ALL');
+    }, [businessId]);
+
+    useEffect(() => {
+        loadData();
+    }, [selectedDate, businessId, loadData]); // Trigger when business changes
+
 
     // Generate time slots 08:00 - 24:00
     const timeSlots = useMemo(() => {
@@ -97,16 +217,7 @@ export const BookingManagerView = () => {
             .filter(b => (b.court?.id || b.courtId) === courtId)
             .sort((a, b) => new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime());
 
-        const merged: Array<{
-            id: string;
-            ids: string[];
-            customerName: string;
-            customerPhone: string;
-            timeSlotStart: string;
-            timeSlotEnd: string;
-            status: string;
-            bookings: Booking[];
-        }> = [];
+        const merged: MergedBooking[] = [];
 
         for (const booking of courtBookings) {
             const phone = booking.serviceUser?.phone || '';
@@ -141,49 +252,10 @@ export const BookingManagerView = () => {
         return merged;
     };
 
-    // Helper to position booking blocks
-    const getBookingStyle = (booking: Booking) => {
-        const start = parseISO(booking.timeSlotStart);
-        const end = parseISO(booking.timeSlotEnd);
 
-        // Calculate start offset from START_HOUR
-        const startHour = start.getHours();
-        const startMin = start.getMinutes();
-        const endHour = end.getHours() === 0 ? 24 : end.getHours(); // Handle midnight as 24
-        const endMin = end.getMinutes();
-
-        const topOffset = ((startHour - START_HOUR) * ROW_HEIGHT) + ((startMin / 60) * ROW_HEIGHT);
-        const durationHours = (endHour + endMin / 60) - (startHour + startMin / 60);
-        const height = durationHours * ROW_HEIGHT;
-
-        // Color based on status - transparent overlay colors (70% opacity)
-        let backgroundColor = 'rgba(147, 197, 253, 0.7)'; // Default: blue-300 @ 70%
-        let borderColor = '#3B82F6'; // blue-500
-
-        if (booking.status === BookingStatus.CONFIRMED) {
-            backgroundColor = 'rgba(134, 239, 172, 0.7)'; // green-300 @ 70%
-            borderColor = '#22C55E'; // green-500
-        } else if (booking.status === BookingStatus.PENDING) {
-            backgroundColor = 'rgba(253, 224, 71, 0.7)'; // yellow-300 @ 70%
-            borderColor = '#EAB308'; // yellow-500
-        } else if (booking.status === BookingStatus.COMPLETED) {
-            backgroundColor = 'rgba(209, 213, 219, 0.7)'; // gray-300 @ 70%
-            borderColor = '#6B7280'; // gray-500
-        } else if (booking.status === BookingStatus.CANCELLED) {
-            backgroundColor = 'rgba(252, 165, 165, 0.7)'; // red-300 @ 70%
-            borderColor = '#EF4444'; // red-500
-        }
-
-        return {
-            top: topOffset,
-            height: height, // Full height, no gap - adjacent bookings will touch
-            backgroundColor,
-            borderColor,
-        };
-    };
 
     // Helper for merged booking style
-    const getMergedBookingStyle = (mergedBooking: { timeSlotStart: string; timeSlotEnd: string; status: string }) => {
+    const getMergedBookingStyle = (mergedBooking: MergedBooking) => {
         const start = parseISO(mergedBooking.timeSlotStart);
         const end = parseISO(mergedBooking.timeSlotEnd);
 
@@ -237,22 +309,22 @@ export const BookingManagerView = () => {
         }
     };
 
-    // Reset and open Add Modal
-    // Reset and open Add Modal
-    useEffect(() => {
-        if (addModalVisible && !editingBookingId) {
-            setNewBooking({
-                courtId: courts.length > 0 ? courts[0].id : '',
-                date: format(selectedDate, 'yyyy-MM-dd'),
-                startTime: '10:00',
-                endTime: '11:00',
-                customerName: '',
-                customerPhone: '',
-                price: '',
-                status: 'CONFIRMED'
-            });
-        }
-    }, [addModalVisible, courts, selectedDate, editingBookingId]);
+
+
+    const openAddModal = (options: Partial<typeof newBooking> = {}) => {
+        setEditingBookingId(null);
+        setNewBooking({
+            courtId: options.courtId || (courts.length > 0 ? courts[0].id : ''),
+            date: options.date || format(selectedDate, 'yyyy-MM-dd'),
+            startTime: options.startTime || '10:00',
+            endTime: options.endTime || '11:00',
+            customerName: options.customerName || '',
+            customerPhone: options.customerPhone || '',
+            price: options.price || '',
+            status: options.status || 'CONFIRMED'
+        });
+        setAddModalVisible(true);
+    };
 
     const handleEditBooking = () => {
         if (!selectedBooking) return;
@@ -276,7 +348,7 @@ export const BookingManagerView = () => {
             endTime: format(endDate, 'HH:mm'),
             customerName: booking.serviceUser?.name || '',
             customerPhone: phone,
-            price: booking.price ? booking.price.toString() : '',
+            price: booking.totalPrice ? booking.totalPrice.toString() : '',
             status: booking.status
         });
 
@@ -292,29 +364,43 @@ export const BookingManagerView = () => {
 
         setAddingBooking(true);
         try {
-            // Format phone number
-            let formattedPhone = newBooking.customerPhone.trim();
-            if (formattedPhone.startsWith('0')) {
-                formattedPhone = '+66' + formattedPhone.substring(1);
-            } else if (!formattedPhone.startsWith('+')) {
-                formattedPhone = '+66' + formattedPhone;
+            // Validate
+            if (!newBooking.courtId) {
+                Alert.alert('กรุณาเลือกสนาม');
+                setAddingBooking(false);
+                return;
             }
 
+            // Determine if capacity booking
+            const selectedCourt = courts.find(c => c.id === newBooking.courtId);
+            const isCapacity = selectedCourt ? getCourtCapacity(selectedCourt) > 1 : false;
+
             const payload = {
-                courtId: newBooking.courtId,
                 date: newBooking.date,
                 startTime: newBooking.startTime,
                 endTime: newBooking.endTime,
                 customerName: newBooking.customerName,
-                customerPhone: formattedPhone,
+                customerPhone: newBooking.customerPhone,
                 price: newBooking.price ? parseFloat(newBooking.price) : undefined,
                 status: newBooking.status
             };
 
             if (editingBookingId) {
-                await bookingService.updateBooking(editingBookingId, payload);
+                await bookingService.updateBooking(editingBookingId, { ...payload, courtId: newBooking.courtId });
             } else {
-                await bookingService.createBooking(payload);
+                if (isCapacity) {
+                    await bookingService.createCapacityBooking({
+                        ...payload,
+                        facilityId: newBooking.courtId,
+                        businessId: businessId || '99999',
+                        quantity: 1
+                    });
+                } else {
+                    await bookingService.createBooking({
+                        ...payload,
+                        courtId: newBooking.courtId
+                    });
+                }
             }
 
             setAddModalVisible(false);
@@ -322,10 +408,45 @@ export const BookingManagerView = () => {
             loadData(); // Refresh bookings
         } catch (error) {
             console.error('Error saving booking:', error);
+            Alert.alert('Error', 'Failed to save booking');
         } finally {
             setAddingBooking(false);
         }
     };
+
+    const sportTabs = useMemo(() => {
+        const sports = new Set<string>();
+        courts.forEach(court => {
+            const type = getCourtSportType(court); // Use helper, one primary sport per court expected usually
+            if (type) sports.add(type);
+        });
+
+        const tabs = ['ALL', ...Array.from(sports)];
+        console.log('Generated Sport Tabs:', tabs);
+        return tabs;
+    }, [courts]);
+
+    const filteredCourts = useMemo(() => {
+        let result = courts;
+
+        if (selectedSport !== 'ALL') {
+            result = courts.filter(c => getCourtSportType(c) === selectedSport);
+        }
+
+        // Sort by sport type to group them together visually
+        return [...result].sort((a, b) => {
+            const sportA = getCourtSportType(a) || 'zzz'; // 'zzz' to put unknown at end
+            const sportB = getCourtSportType(b) || 'zzz';
+            if (sportA !== sportB) return sportA.localeCompare(sportB);
+
+            // If same sport, sort by name
+            return a.name.localeCompare(b.name);
+        });
+    }, [courts, selectedSport]);
+
+    // Separate courts by type for rendering
+    const slotCourts = useMemo(() => filteredCourts.filter(c => getCourtCapacity(c) <= 1), [filteredCourts]);
+    const capacityCourts = useMemo(() => filteredCourts.filter(c => getCourtCapacity(c) > 1), [filteredCourts]);
 
     // Generate time options for picker
     const timeOptions = useMemo(() => {
@@ -354,13 +475,6 @@ export const BookingManagerView = () => {
                     <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))}>
                         <MaterialCommunityIcons name="chevron-right" size={30} color={colors.neutral[600]} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setAddModalVisible(true)}
-                    >
-                        <MaterialCommunityIcons name="plus" size={20} color={colors.white} />
-                        <Text style={styles.addButtonText}>เพิ่มการจอง</Text>
-                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -374,81 +488,222 @@ export const BookingManagerView = () => {
                 </View>
             ) : (
                 <View style={styles.tableContainer}>
-                    <View style={styles.tableHeaderRow}>
-                        <View style={{ width: TIME_COL_WIDTH }} />
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            scrollEnabled={false}
-                            ref={headerScrollRef}
-                        >
-                            {courts.map(court => (
-                                <View key={court.id} style={styles.columnHeader}>
-                                    <Text style={styles.columnHeaderText} numberOfLines={1}>{court.name}</Text>
-                                </View>
+                    {/* Sport Tabs */}
+                    <View style={styles.tabContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {sportTabs.map(sport => (
+                                <TouchableOpacity
+                                    key={sport}
+                                    style={[
+                                        styles.tabItem,
+                                        selectedSport === sport && styles.tabItemSelected
+                                    ]}
+                                    onPress={() => setSelectedSport(sport)}
+                                >
+                                    <Text style={[
+                                        styles.tabText,
+                                        selectedSport === sport && styles.tabTextSelected
+                                    ]}>
+                                        {sport === 'ALL' ? 'ทั้งหมด' : getSportName(sport)}
+                                    </Text>
+                                </TouchableOpacity>
                             ))}
                         </ScrollView>
                     </View>
 
-                    <ScrollView style={styles.verticalScroll}>
-                        <View style={styles.bodyContainer}>
-                            <View style={styles.timeColumn}>
-                                {timeSlots.map((time, index) => (
-                                    <View key={index} style={styles.timeSlot}>
-                                        <Text style={styles.timeText}>{time}</Text>
-                                    </View>
-                                ))}
-                            </View>
-
-                            <ScrollView
-                                horizontal
-                                onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                                    const x = e.nativeEvent.contentOffset.x;
-                                    headerScrollRef.current?.scrollTo({ x, animated: false });
-                                }}
-                                scrollEventThrottle={16}
-                            >
-                                <View style={styles.grid}>
-                                    {courts.map((court, cIndex) => (
-                                        <View key={court.id} style={styles.courtColumn}>
-                                            {timeSlots.map((_, tIndex) => (
-                                                <View key={tIndex} style={styles.gridCell} />
-                                            ))}
-
-                                            {getMergedBookingsForCourt(court.id).map(mergedBooking => {
-                                                const bookingStyle = getMergedBookingStyle(mergedBooking);
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={mergedBooking.id}
-                                                        style={[
-                                                            styles.bookingBlock,
-                                                            {
-                                                                top: bookingStyle.top,
-                                                                height: bookingStyle.height,
-                                                                backgroundColor: bookingStyle.backgroundColor,
-                                                                borderLeftColor: bookingStyle.borderColor,
-                                                            }
-                                                        ]}
-                                                        onPress={() => handleBookingPress(mergedBooking.bookings[0].id)}
-                                                        activeOpacity={0.8}
-                                                    >
-                                                        <Text style={styles.bookingText} numberOfLines={1}>
-                                                            {mergedBooking.customerName}
-                                                        </Text>
-                                                        <Text style={styles.bookingSubText}>
-                                                            {format(parseISO(mergedBooking.timeSlotStart), 'HH:mm')} - {format(parseISO(mergedBooking.timeSlotEnd), 'HH:mm')}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
+                    {slotCourts.length > 0 && (
+                        <>
+                            <View style={styles.tableHeaderRow}>
+                                <TouchableOpacity
+                                    style={styles.tableAddButton}
+                                    onPress={() => openAddModal()}
+                                    activeOpacity={0.7}
+                                >
+                                    <MaterialCommunityIcons name="plus-box" size={24} color={colors.primary.main} />
+                                </TouchableOpacity>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    scrollEnabled={false}
+                                    ref={headerScrollRef}
+                                >
+                                    {slotCourts.map(court => (
+                                        <View key={court.id} style={styles.columnHeader}>
+                                            <View style={styles.sportBadgeSmall}>
+                                                <Text style={styles.sportBadgeTextSmall}>
+                                                    {getSportName(getCourtSportType(court) || 'ทั่วไป')}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.columnHeaderText} numberOfLines={1}>{court.name}</Text>
                                         </View>
                                     ))}
+                                </ScrollView>
+                            </View>
+
+                            <View style={{ flex: 1 }}>
+                                <ScrollView style={styles.verticalScroll}>
+                                    <View style={styles.bodyContainer}>
+                                        <View style={styles.timeColumn}>
+                                            {timeSlots.map((time, index) => (
+                                                <View key={index} style={styles.timeSlot}>
+                                                    <Text style={styles.timeText}>{time}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+
+                                        <ScrollView
+                                            horizontal
+                                            onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                                                const x = e.nativeEvent.contentOffset.x;
+                                                headerScrollRef.current?.scrollTo({ x, animated: false });
+                                            }}
+                                            scrollEventThrottle={16}
+                                        >
+                                            <View style={styles.grid}>
+                                                {slotCourts.map((court) => {
+                                                    return (
+                                                        <View key={court.id} style={styles.courtColumn}>
+                                                            {/* Background Grid Cells */}
+                                                            {timeSlots.map((time, tIndex) => (
+                                                                <TouchableOpacity
+                                                                    key={tIndex}
+                                                                    style={styles.gridCell}
+                                                                    activeOpacity={1}
+                                                                    onPress={() => openAddModal({
+                                                                        courtId: court.id,
+                                                                        startTime: time,
+                                                                        endTime: time.split(':')[0].padStart(2, '0') + ':59'
+                                                                    })}
+                                                                />
+                                                            ))}
+
+                                                            {/* Standard: Render Stacked Bookings (Merged) */}
+                                                            {getMergedBookingsForCourt(court.id).map(mergedBooking => {
+                                                                const bookingStyle = getMergedBookingStyle(mergedBooking);
+                                                                return (
+                                                                    <TouchableOpacity
+                                                                        key={mergedBooking.id}
+                                                                        style={[
+                                                                            styles.bookingBlock,
+                                                                            {
+                                                                                top: bookingStyle.top,
+                                                                                height: bookingStyle.height,
+                                                                                backgroundColor: bookingStyle.backgroundColor,
+                                                                                borderLeftColor: bookingStyle.borderColor,
+                                                                            }
+                                                                        ]}
+                                                                        onPress={() => handleBookingPress(mergedBooking.bookings[0].id)}
+                                                                        activeOpacity={0.8}
+                                                                    >
+                                                                        <Text style={styles.bookingText} numberOfLines={1}>
+                                                                            {mergedBooking.bookings[0].serviceUser?.name || 'ลูกค้า'}
+                                                                        </Text>
+                                                                        <Text style={styles.bookingSubText} numberOfLines={1}>
+                                                                            {mergedBooking.bookings[0].serviceUser?.phone || ''}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        </ScrollView>
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        </>
+                    )}
+
+                    {/* Capacity Base Section - Independent Scroll Area */}
+                    {capacityCourts.length > 0 && (
+                        <View style={{ flex: slotCourts.length > 0 ? 0 : 1, height: slotCourts.length > 0 ? '35%' : undefined, borderTopWidth: slotCourts.length > 0 ? 1 : 0, borderTopColor: colors.neutral[200], backgroundColor: 'white' }}>
+                            <ScrollView nestedScrollEnabled contentContainerStyle={{ flexGrow: 1 }}>
+                                <View style={[styles.capacityContainer, { marginTop: 0, borderTopWidth: 0, paddingTop: 20 }]}>
+                                    <Text style={styles.sectionHeader}>บริการ (Capacity Base)</Text>
+                                    {capacityCourts.map(facility => {
+                                        const facilityBookings = bookings.filter(b => b.courtId === facility.id && b.status !== 'CANCELLED');
+                                        const uniquePhones = new Set(facilityBookings.map(b => b.customerPhone || b.serviceUser?.phone)).size;
+                                        const isExpanded = expandedFacilityId === facility.id;
+
+                                        return (
+                                            <View key={facility.id} style={styles.facilityCard}>
+                                                <View style={styles.facilityHeader}>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.facilityName}>{facility.name}</Text>
+                                                        <Text style={styles.facilitySubName}>
+                                                            พื้นที่ใช้งาน: {uniquePhones} ท่าน | ความจุสูงสุด {getCourtCapacity(facility)} ท่าน
+                                                        </Text>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                        <TouchableOpacity
+                                                            style={styles.detailsButton}
+                                                            onPress={() => setExpandedFacilityId(isExpanded ? null : facility.id)}
+                                                        >
+                                                            <MaterialCommunityIcons
+                                                                name={isExpanded ? "chevron-up" : "format-list-bulleted"}
+                                                                size={18}
+                                                                color={colors.neutral[600]}
+                                                            />
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={styles.addCapacityButton}
+                                                            onPress={() => {
+                                                                openAddModal({
+                                                                    courtId: facility.id,
+                                                                    startTime: format(new Date(), 'HH:00'),
+                                                                    endTime: format(new Date(new Date().setHours(new Date().getHours() + 1)), 'HH:00'),
+                                                                    price: facility.pricePerSlot?.toString() || '',
+                                                                });
+                                                            }}
+                                                        >
+                                                            <MaterialCommunityIcons name="plus" size={16} color="white" />
+                                                            <Text style={styles.addCapacityButtonText}>จอง</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+
+                                                {/* List of Capacity Bookings - Only show if expanded */}
+                                                {isExpanded && (
+                                                    <View style={styles.bookingList}>
+                                                        {facilityBookings.length > 0 ? (
+                                                            facilityBookings
+                                                                .sort((a, b) => a.timeSlotStart.localeCompare(b.timeSlotStart))
+                                                                .map(booking => (
+                                                                    <TouchableOpacity
+                                                                        key={booking.id}
+                                                                        style={styles.capacityBookingItem}
+                                                                        onPress={() => handleBookingPress(booking.id)}
+                                                                    >
+                                                                        <View style={styles.checkInTime}>
+                                                                            <Text style={styles.timeTextSmall}>
+                                                                                {format(parseISO(booking.timeSlotStart), 'HH:mm')} - {format(parseISO(booking.timeSlotEnd), 'HH:mm')}
+                                                                            </Text>
+                                                                        </View>
+                                                                        <View style={styles.bookingUserInfo}>
+                                                                            <Text style={styles.bookingUserName}>{booking.customerName || booking.serviceUser?.name || 'ลูกค้า'}</Text>
+                                                                            <Text style={styles.bookingUserPhone}>{booking.customerPhone || booking.serviceUser?.phone}</Text>
+                                                                        </View>
+                                                                        <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
+                                                                            <Text style={styles.statusTextSmall}>{booking.status}</Text>
+                                                                        </View>
+                                                                    </TouchableOpacity>
+                                                                ))
+                                                        ) : (
+                                                            <Text style={styles.emptyBookingsText}>ยังไม่มีรายการจองในขณะนี้</Text>
+                                                        )}
+                                                    </View>
+                                                )}
+                                            </View>
+                                        );
+                                    })}
                                 </View>
                             </ScrollView>
                         </View>
-                    </ScrollView>
+                    )}
                 </View>
-            )}
+            )
+            }
 
             <Modal
                 visible={modalVisible}
@@ -486,7 +741,6 @@ export const BookingManagerView = () => {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.detailLabel}>เบอร์โทรศัพท์</Text>
                                         <TouchableOpacity
-                                            style={styles.copyableRow}
                                             onPress={() => {
                                                 const phone = selectedBooking.serviceUser?.phone;
                                                 if (phone) {
@@ -495,8 +749,10 @@ export const BookingManagerView = () => {
                                                 }
                                             }}
                                         >
-                                            <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || '-'}</Text>
-                                            <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
+                                            <View style={styles.copyableRow}>
+                                                <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || '-'}</Text>
+                                                <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
+                                            </View>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -615,8 +871,12 @@ export const BookingManagerView = () => {
                                 <Text style={styles.formLabel}>เวลาเริ่ม *</Text>
                                 <View style={styles.timeGrid}>
                                     {timeOptions.map(time => {
-                                        // Check if this time slot is booked
-                                        const isBooked = bookings.some(b => {
+                                        const selectedCourt = courts.find(c => c.id === newBooking.courtId);
+                                        const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
+                                        const isCapacity = capacity > 1;
+
+                                        // Count active bookings for this slot
+                                        const activeBookingsAtSlot = bookings.filter(b => {
                                             // Skip current booking if editing
                                             if (editingBookingId && b.id === editingBookingId) return false;
 
@@ -629,9 +889,10 @@ export const BookingManagerView = () => {
                                             const slotTime = new Date(selectedDate);
                                             slotTime.setHours(h, m, 0, 0);
 
-                                            // Check if slot is within booking range
                                             return slotTime >= bStart && slotTime < bEnd;
-                                        });
+                                        }).length;
+
+                                        const isDisabled = isCapacity ? activeBookingsAtSlot >= capacity : activeBookingsAtSlot > 0;
 
                                         return (
                                             <TouchableOpacity
@@ -639,10 +900,10 @@ export const BookingManagerView = () => {
                                                 style={[
                                                     styles.timeButton,
                                                     newBooking.startTime === time && styles.timeButtonSelected,
-                                                    isBooked && styles.timeButtonDisabled
+                                                    isDisabled && styles.timeButtonDisabled
                                                 ]}
                                                 onPress={() => {
-                                                    if (isBooked) return;
+                                                    if (isDisabled) return;
                                                     const [h, m] = time.split(':').map(Number);
                                                     const endH = (h + 1) % 24;
                                                     setNewBooking(prev => ({
@@ -651,14 +912,19 @@ export const BookingManagerView = () => {
                                                         endTime: `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
                                                     }));
                                                 }}
-                                                disabled={isBooked}
+                                                disabled={isDisabled}
                                             >
                                                 <Text style={[
                                                     styles.timeButtonText,
                                                     newBooking.startTime === time && styles.timeButtonTextSelected,
-                                                    isBooked && styles.timeButtonTextDisabled
+                                                    isDisabled && styles.timeButtonTextDisabled
                                                 ]}>{time}</Text>
-                                                {isBooked && <Text style={styles.bookedLabel}>จองแล้ว</Text>}
+                                                {isDisabled && <Text style={styles.bookedLabel}>เต็มแล้ว</Text>}
+                                                {isCapacity && activeBookingsAtSlot > 0 && activeBookingsAtSlot < capacity && (
+                                                    <Text style={[styles.bookedLabel, { color: colors.primary.main }]}>
+                                                        {activeBookingsAtSlot}/{capacity}
+                                                    </Text>
+                                                )}
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -677,24 +943,33 @@ export const BookingManagerView = () => {
                                         const endMinutes = endH * 60 + endM;
                                         const isInvalid = endMinutes <= startMinutes;
 
-                                        // Check if range overlaps with existing bookings
-                                        const hasOverlap = bookings.some(b => {
-                                            // Skip current booking if editing
-                                            if (editingBookingId && b.id === editingBookingId) return false;
+                                        const selectedCourt = courts.find(c => c.id === newBooking.courtId);
+                                        const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
+                                        const isCapacity = capacity > 1;
 
-                                            if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
-                                            if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
+                                        // Check if range overlaps with existing bookings (for capacity, check if any slot in range is full)
+                                        const hasOverlap = timeOptions.some(optTime => {
+                                            const [optH, optM] = optTime.split(':').map(Number);
+                                            const optTotalMinutes = optH * 60 + optM;
 
-                                            const bStart = new Date(b.timeSlotStart);
-                                            const bEnd = new Date(b.timeSlotEnd);
+                                            // Only check slots within the proposed range
+                                            if (optTotalMinutes < startMinutes || optTotalMinutes >= endMinutes) return false;
 
-                                            const newStart = new Date(selectedDate);
-                                            newStart.setHours(startH, startM, 0, 0);
-                                            const newEnd = new Date(selectedDate);
-                                            newEnd.setHours(endH, endM, 0, 0);
+                                            // Count bookings at this specific slot
+                                            const countAtSlot = bookings.filter(b => {
+                                                if (editingBookingId && b.id === editingBookingId) return false;
+                                                if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
+                                                if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
 
-                                            // Check overlap: newStart < bEnd && newEnd > bStart
-                                            return newStart < bEnd && newEnd > bStart;
+                                                const bStart = new Date(b.timeSlotStart);
+                                                const bEnd = new Date(b.timeSlotEnd);
+                                                const slotTime = new Date(selectedDate);
+                                                slotTime.setHours(optH, optM, 0, 0);
+
+                                                return slotTime >= bStart && slotTime < bEnd;
+                                            }).length;
+
+                                            return isCapacity ? countAtSlot >= capacity : countAtSlot > 0;
                                         });
 
                                         const isDisabled = isInvalid || hasOverlap;
@@ -725,37 +1000,37 @@ export const BookingManagerView = () => {
                             </View>
                         </View>
 
-                        {/* Customer Info */}
-                        <View style={styles.formGroup}>
-                            <Text style={styles.formLabel}>ชื่อลูกค้า *</Text>
-                            <View style={styles.inputContainer}>
-                                <MaterialCommunityIcons name="account" size={20} color={colors.neutral[400]} />
-                                <TextInput
-                                    style={styles.textInputReal}
-                                    value={newBooking.customerName}
-                                    onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerName: text }))}
-                                    placeholder="กรอกชื่อลูกค้า"
-                                    placeholderTextColor={colors.neutral[400]}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.formGroup}>
-                            <Text style={styles.formLabel}>เบอร์โทรศัพท์ *</Text>
-                            <View style={styles.inputContainer}>
-                                <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[400]} />
-                                <TextInput
-                                    style={styles.textInputReal}
-                                    value={newBooking.customerPhone}
-                                    onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerPhone: text }))}
-                                    placeholder="0812345678"
-                                    placeholderTextColor={colors.neutral[400]}
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-                        </View>
-
+                        {/* Customer Info & Price Row */}
                         <View style={styles.formRow}>
+                            <View style={[styles.formGroup, { flex: 2 }]}>
+                                <Text style={styles.formLabel}>ชื่อลูกค้า *</Text>
+                                <View style={styles.inputContainer}>
+                                    <MaterialCommunityIcons name="account" size={20} color={colors.neutral[400]} />
+                                    <TextInput
+                                        style={styles.textInputReal}
+                                        value={newBooking.customerName}
+                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerName: text }))}
+                                        placeholder="กรอกชื่อลูกค้า"
+                                        placeholderTextColor={colors.neutral[400]}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={[styles.formGroup, { flex: 1.5 }]}>
+                                <Text style={styles.formLabel}>เบอร์โทรศัพท์ *</Text>
+                                <View style={styles.inputContainer}>
+                                    <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[400]} />
+                                    <TextInput
+                                        style={styles.textInputReal}
+                                        value={newBooking.customerPhone}
+                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerPhone: text }))}
+                                        placeholder="0812345678"
+                                        placeholderTextColor={colors.neutral[400]}
+                                        keyboardType="phone-pad"
+                                    />
+                                </View>
+                            </View>
+
                             <View style={[styles.formGroup, { flex: 1 }]}>
                                 <Text style={styles.formLabel}>ราคา (บาท)</Text>
                                 <View style={styles.inputContainer}>
@@ -764,38 +1039,40 @@ export const BookingManagerView = () => {
                                         style={styles.textInputReal}
                                         value={newBooking.price}
                                         onChangeText={(text) => setNewBooking(prev => ({ ...prev, price: text }))}
-                                        placeholder="คำนวณอัตโนมัติ"
+                                        placeholder="ราคา"
                                         placeholderTextColor={colors.neutral[400]}
                                         keyboardType="numeric"
                                     />
                                 </View>
                             </View>
-                            <View style={[styles.formGroup, { flex: 1 }]}>
-                                <Text style={styles.formLabel}>สถานะ</Text>
-                                <View style={styles.statusRow}>
-                                    {['CONFIRMED', 'PENDING'].map(status => (
-                                        <TouchableOpacity
-                                            key={status}
-                                            style={[
-                                                styles.statusChip,
-                                                newBooking.status === status && styles.statusChipSelected,
-                                                status === 'CONFIRMED' && { borderColor: '#22C55E' },
-                                                status === 'PENDING' && { borderColor: '#EAB308' },
-                                                newBooking.status === status && status === 'CONFIRMED' && { backgroundColor: '#DCFCE7' },
-                                                newBooking.status === status && status === 'PENDING' && { backgroundColor: '#FEF9C3' }
-                                            ]}
-                                            onPress={() => setNewBooking(prev => ({ ...prev, status }))}
-                                        >
-                                            <Text style={[
-                                                styles.statusChipText,
-                                                status === 'CONFIRMED' && { color: '#166534' },
-                                                status === 'PENDING' && { color: '#854D0E' }
-                                            ]}>
-                                                {status === 'CONFIRMED' ? 'ยืนยัน' : 'รอดำเนินการ'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
+                        </View>
+
+                        {/* Status Row */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.formLabel}>สถานะ</Text>
+                            <View style={styles.statusRow}>
+                                {['CONFIRMED', 'PENDING'].map(status => (
+                                    <TouchableOpacity
+                                        key={status}
+                                        style={[
+                                            styles.statusChip,
+                                            newBooking.status === status && styles.statusChipSelected,
+                                            status === 'CONFIRMED' && { borderColor: '#22C55E' },
+                                            status === 'PENDING' && { borderColor: '#EAB308' },
+                                            newBooking.status === status && status === 'CONFIRMED' && { backgroundColor: '#DCFCE7' },
+                                            newBooking.status === status && status === 'PENDING' && { backgroundColor: '#FEF9C3' }
+                                        ]}
+                                        onPress={() => setNewBooking(prev => ({ ...prev, status }))}
+                                    >
+                                        <Text style={[
+                                            styles.statusChipText,
+                                            status === 'CONFIRMED' && { color: '#166534' },
+                                            status === 'PENDING' && { color: '#854D0E' }
+                                        ]}>
+                                            {status === 'CONFIRMED' ? 'ยืนยัน' : 'รอดำเนินการ'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
                     </ScrollView>
@@ -835,28 +1112,29 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.neutral[50],
-        padding: spacing.md,
+        padding: 10,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xl,
+        paddingVertical: 6,
+        paddingHorizontal: spacing.lg,
         backgroundColor: colors.white,
-        borderRadius: borderRadius.lg,
-        marginBottom: spacing.md,
-        elevation: 2,
+        borderRadius: borderRadius.md,
+        marginBottom: 8,
+        elevation: 1,
     },
     title: {
         fontFamily: fonts.bold,
-        fontSize: 24,
+        fontSize: 14,
         color: colors.neutral[900],
     },
     subtitle: {
         fontFamily: fonts.medium,
-        fontSize: 16,
+        fontSize: 11,
         color: colors.neutral[500],
+        marginTop: -2,
     },
     headerActions: {
         flexDirection: 'row',
@@ -864,10 +1142,12 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     todayButton: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.sm,
-        backgroundColor: colors.neutral[100],
-        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 4,
+        backgroundColor: colors.neutral[50],
+        borderRadius: borderRadius.sm,
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
     },
     todayText: {
         fontFamily: fonts.medium,
@@ -913,7 +1193,7 @@ const styles = StyleSheet.create({
     },
     columnHeaderText: {
         fontFamily: fonts.semiBold,
-        fontSize: 14,
+        fontSize: 12,
         color: colors.neutral[700],
     },
     verticalScroll: {
@@ -1073,14 +1353,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: colors.primary.main,
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: 8,
         borderRadius: borderRadius.md,
         marginLeft: spacing.md,
         gap: spacing.xs,
     },
     addButtonText: {
         fontFamily: fonts.medium,
-        fontSize: 14,
+        fontSize: 13,
         color: colors.white,
     },
     // Add Modal Styles
@@ -1317,5 +1597,222 @@ const styles = StyleSheet.create({
         fontFamily: fonts.medium,
         fontSize: 16,
         color: colors.white,
+    },
+    // Tab Styles
+    tabContainer: {
+        paddingHorizontal: spacing.lg,
+        paddingBottom: 8,
+        paddingTop: 8,
+        flexDirection: 'row',
+        backgroundColor: colors.white,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.neutral[100],
+    },
+    tabItem: {
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: borderRadius.md,
+        marginRight: spacing.sm,
+        backgroundColor: colors.neutral[50],
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
+    },
+    tabItemSelected: {
+        backgroundColor: colors.primary.main,
+        borderColor: colors.primary.main,
+    },
+    tabText: {
+        fontFamily: fonts.medium,
+        fontSize: 13,
+        color: colors.neutral[600],
+    },
+    tabTextSelected: {
+        color: colors.white,
+    },
+
+    sportBadgeSmall: {
+        backgroundColor: colors.neutral[100],
+        paddingHorizontal: spacing.xs,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginBottom: 4,
+        alignSelf: 'center',
+    },
+    sportBadgeTextSmall: {
+        fontSize: 10,
+        color: colors.neutral[500],
+        fontFamily: fonts.regular,
+    },
+    tableAddButton: {
+        width: TIME_COL_WIDTH,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRightWidth: 1,
+        borderRightColor: colors.neutral[200],
+        backgroundColor: colors.white,
+    },
+    // Capacity Base Styles
+    capacityCell: {
+        width: '100%',
+        height: ROW_HEIGHT,
+        borderBottomWidth: 1,
+        borderRightWidth: 1,
+        borderColor: colors.neutral[200],
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    capacityText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.neutral[700],
+        zIndex: 2,
+    },
+    capacityLabel: {
+        fontSize: 9,
+        color: colors.neutral[500],
+        zIndex: 2,
+    },
+    capacityFill: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        opacity: 0.25,
+    },
+    // New Styles for Separated Capacity Section
+    capacityContainer: {
+        marginTop: 0,
+        paddingTop: 16,
+        paddingHorizontal: spacing.lg,
+        paddingBottom: 40,
+    },
+    sectionHeader: {
+        fontFamily: fonts.bold,
+        fontSize: 15,
+        color: colors.neutral[900],
+        marginBottom: spacing.sm,
+    },
+    facilityCard: {
+        backgroundColor: colors.white,
+        borderRadius: borderRadius.md,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
+        // Soft modern shadow
+        shadowColor: colors.neutral[900],
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    facilityHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+        paddingBottom: 4,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.neutral[100],
+    },
+    facilityName: {
+        fontFamily: fonts.semiBold,
+        fontSize: 14,
+        color: colors.primary.main,
+    },
+    facilitySubName: {
+        fontFamily: fonts.regular,
+        fontSize: 12,
+        color: colors.neutral[500],
+        marginTop: 2,
+    },
+    addCapacityButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary.main,
+        paddingVertical: 6,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.md,
+    },
+    addCapacityButtonText: {
+        fontFamily: fonts.medium,
+        color: colors.white,
+        fontSize: 12,
+        marginLeft: 4,
+    },
+    detailsButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 6,
+        backgroundColor: colors.neutral[50],
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
+    },
+    emptyBookingsText: {
+        fontSize: 12,
+        color: colors.neutral[400],
+        textAlign: 'center',
+        fontStyle: 'italic',
+        marginTop: spacing.sm,
+    },
+    bookingList: {
+        gap: spacing.sm,
+    },
+    capacityBookingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 6,
+        backgroundColor: colors.neutral[50], // Consistent light bg
+        borderRadius: borderRadius.sm,
+        borderWidth: 1,
+        borderColor: colors.neutral[100],
+    },
+    checkInTime: {
+        backgroundColor: colors.white,
+        paddingVertical: 4,
+        paddingHorizontal: 6,
+        borderRadius: 4,
+        marginRight: spacing.sm,
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
+    },
+    timeTextSmall: {
+        fontFamily: fonts.medium,
+        fontSize: 12,
+        color: colors.neutral[800],
+    },
+    bookingUserInfo: {
+        flex: 1,
+    },
+    bookingUserName: {
+        fontFamily: fonts.medium,
+        fontSize: 13,
+        color: colors.neutral[900],
+    },
+    bookingUserPhone: {
+        fontFamily: fonts.regular,
+        fontSize: 12,
+        color: colors.neutral[500],
+    },
+    statusTag: {
+        paddingVertical: 2,
+        paddingHorizontal: 8,
+        borderRadius: borderRadius.sm,
+    },
+    statusTextSmall: {
+        fontFamily: fonts.medium,
+        fontSize: 10,
+        color: colors.neutral[800],
+    },
+    emptyBookingsText: {
+        textAlign: 'center',
+        color: colors.neutral[400],
+        fontSize: 14,
+        fontFamily: fonts.regular,
+        marginTop: spacing.sm,
     },
 });

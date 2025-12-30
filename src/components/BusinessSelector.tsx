@@ -57,10 +57,9 @@ export const BusinessSelector = ({ businesses, selectedId, onSelect, containerSt
             >
                 <View style={styles.selectorContent}>
                     <View style={styles.iconWrapper}>
-                        <MaterialCommunityIcons name="store" size={20} color={colors.primary.main} />
+                        <MaterialCommunityIcons name="store" size={16} color={colors.primary.main} />
                     </View>
                     <View style={styles.textWrapper}>
-                        <Text style={styles.label}>เลือกธุรกิจ</Text>
                         <Text style={styles.value} numberOfLines={1}>
                             {selectedBusiness ? selectedBusiness.name : 'กรุณาเลือกธุรกิจ'}
                         </Text>
@@ -134,10 +133,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: colors.white,
-        padding: spacing.md,
-        borderRadius: borderRadius.lg,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.md,
         borderWidth: 1,
         borderColor: colors.neutral[200],
+        height: 42,
     },
     selectorContent: {
         flexDirection: 'row',
@@ -145,9 +146,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     iconWrapper: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: colors.primary.light + '20', // 20% opacity
         alignItems: 'center',
         justifyContent: 'center',
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     value: {
-        fontSize: responsive.fontSize.md,
+        fontSize: responsive.fontSize.sm,
         fontWeight: '600',
         color: colors.neutral[900],
     },

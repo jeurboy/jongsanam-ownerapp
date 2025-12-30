@@ -2,12 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, fonts, spacing, borderRadius } from '../../theme/tokens';
 
-export const UserManagerView = () => {
+interface UserManagerViewProps {
+    businessId?: string | null;
+}
+
+export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>จัดการผู้ใช้งาน</Text>
-                <Text style={styles.subtitle}>ตรวจสอบและจัดการข้อมูลสมาชิก</Text>
+                <Text style={styles.subtitle}>ตรวจสอบและจัดการข้อมูลสมาชิก (Business ID: {businessId})</Text>
             </View>
             <View style={styles.content}>
                 <View style={styles.placeholderContainer}>

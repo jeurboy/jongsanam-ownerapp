@@ -22,5 +22,24 @@ export const courtService = {
         const response = await apiService.get<Court[]>(`/api/owner/courts`);
         if (response.error) return [];
         return response.data || [];
+    },
+
+    async getCapacityFacilities(): Promise<Court[]> {
+        const response = await apiService.get<any[]>('/api/owner/capacity-facilities');
+        if (response.error) {
+            console.error('Error fetching capacity facilities:', response.error);
+            return [];
+        }
+
+        return response.data?.map(item => ({
+            ...item,
+            id: item.id,
+            name: item.name,
+            businessId: item.businessId,
+            capacity: item.capacity || 20,
+            isCapacity: true, // Mark explicit endpoint source
+            // Ensure sportTypeIds exists if logical
+            sportTypeIds: item.sportTypeIds || (item.sportType ? [item.sportType] : [])
+        })) || [];
     }
 };

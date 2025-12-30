@@ -9,6 +9,7 @@ import {
     StatusBar,
     Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius } from '../theme/tokens';
@@ -68,13 +69,23 @@ export const HomeScreen = () => {
             const result = await businessService.getBusinesses();
             setBusinesses(result.businesses);
 
-            // Auto-select first business if none selected
-            if (result.businesses.length > 0 && !selectedBusinessId) {
+            // Check for saved selection
+            const savedId = await AsyncStorage.getItem('SELECTED_BUSINESS_ID');
+
+            if (savedId && result.businesses.some(b => b.id === savedId)) {
+                setSelectedBusinessId(savedId);
+            } else if (result.businesses.length > 0 && !selectedBusinessId) {
+                // Auto-select first if no saved or saved not found
                 setSelectedBusinessId(result.businesses[0].id);
             }
         } catch (error) {
             console.error('Failed to fetch businesses:', error);
         }
+    };
+
+    const handleBusinessSelect = async (business: Business) => {
+        setSelectedBusinessId(business.id);
+        await AsyncStorage.setItem('SELECTED_BUSINESS_ID', business.id);
     };
 
     const handleLogout = () => {
@@ -104,7 +115,7 @@ export const HomeScreen = () => {
                 <BusinessSelector
                     businesses={businesses}
                     selectedId={selectedBusinessId}
-                    onSelect={(b) => setSelectedBusinessId(b.id)}
+                    onSelect={handleBusinessSelect}
                     containerStyle={styles.businessSelectorContainer}
                 />
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -191,9 +202,9 @@ export const HomeScreen = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'booking':
-                return <BookingManagerView />;
+                return <BookingManagerView businessId={selectedBusinessId || '9999'} />;
             case 'users':
-                return <UserManagerView />;
+                return <UserManagerView businessId={selectedBusinessId || '9999'} />;
             case 'overview':
             default:
                 return renderOverview();
@@ -240,8 +251,8 @@ const styles = StyleSheet.create({
     stickyHeader: {
         backgroundColor: colors.neutral[50],
         paddingHorizontal: responsive.spacing.lg,
-        paddingTop: spacing.md,
-        paddingBottom: spacing.sm,
+        paddingTop: 8,
+        paddingBottom: 4,
         zIndex: 10,
     },
     headerContainer: {
@@ -270,9 +281,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     logoutButton: {
-        width: 48,
-        height: 48,
-        borderRadius: borderRadius.lg,
+        width: 42,
+        height: 42,
+        borderRadius: borderRadius.md,
         backgroundColor: colors.white,
         borderWidth: 1,
         borderColor: colors.neutral[200],

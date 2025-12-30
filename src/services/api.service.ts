@@ -60,13 +60,13 @@ export const apiService = {
             // If unauthorized, try to refresh the token
             if (response.status === 401 && !skipAuth) {
                 const responseData = await response.clone().json().catch(() => ({}));
+                const errorStr = (responseData.error || responseData.message || '').toLowerCase();
                 const isTokenExpired =
-                    responseData.error?.includes('expired') ||
-                    responseData.error?.includes('jwt expired') ||
-                    responseData.message?.includes('expired');
+                    errorStr.includes('expired') ||
+                    errorStr.includes('jwt expired') ||
+                    errorStr.includes('invalid token');
                 const isMissingToken =
-                    responseData.error?.includes('Missing authorization') ||
-                    responseData.message?.includes('Missing authorization') ||
+                    errorStr.includes('missing authorization') ||
                     !token;
 
                 if (isTokenExpired || isMissingToken) {

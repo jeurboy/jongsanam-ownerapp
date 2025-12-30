@@ -9,4 +9,6 @@ export interface Court {
     openingHour?: string; // HH:mm
     closingHour?: string; // HH:mm
     approvalStatus?: 'approved' | 'pending' | 'rejected';
+    capacity?: number;
+    isCapacity?: boolean;
 }

@@ -26,6 +26,9 @@ export interface Booking {
     totalPrice: number;
     notes?: string;
 
+    customerName?: string;
+    customerPhone?: string;
+
     // Relations
     court?: Court;
     serviceUser?: ServiceUser;
