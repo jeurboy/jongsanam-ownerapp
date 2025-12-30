@@ -1,97 +1,157 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Jong Court Owner App
 
-# Getting Started
+แอปพลิเคชันสำหรับเจ้าของสนามกีฬา รองรับ iOS และ Android พร้อม Tablet Mode
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+- ✅ หน้าเข้าสู่ระบบ (Login) พร้อม Authentication
+- ✅ หน้า Home Dashboard
+- ✅ รองรับ Tablet Mode (iPad)
+- ✅ Responsive Design
+- ✅ Thai Language Support
+- ✅ Token-based Authentication
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Tech Stack
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- React Native 0.83.1
+- React Navigation
+- TypeScript
+- AsyncStorage (Token Management)
 
-```sh
-# Using npm
-npm start
+## Installation
 
-# OR using Yarn
-yarn start
+```bash
+# Install dependencies
+npm install
+
+# Install iOS pods
+cd ios && pod install && cd ..
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
+## Running the App
 
 ### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+npm run ios
 ```
 
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
+### Android
+```bash
+npm run android
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Configuration
 
-```sh
-# Using npm
+### API Endpoint
+แก้ไข API URL ใน `src/services/auth.service.ts`:
+```typescript
+const API_BASE_URL = 'http://localhost:3000'; // เปลี่ยนเป็น API ของคุณ
+```
+
+### Authentication Flow
+
+1. **Login Screen** - ผู้ใช้กรอก username และ password
+2. **API Call** - เรียก `/api/auth/login` endpoint
+3. **Token Storage** - เก็บ token และ user data ใน AsyncStorage
+4. **Navigate to Home** - นำไปหน้า Home เมื่อ login สำเร็จ
+
+### API Response Format
+
+Login endpoint ควร return:
+```json
+{
+  "user": {
+    "id": "string",
+    "username": "string",
+    "email": "string",
+    "role": "court_owner"
+  },
+  "token": "string"
+}
+```
+
+## Project Structure
+
+```
+src/
+├── components/       # Reusable components
+├── context/         # React Context (AuthContext)
+├── navigation/      # Navigation setup
+├── screens/         # Screen components
+│   ├── LoginScreen.tsx
+│   └── HomeScreen.tsx
+├── services/        # API services
+│   └── auth.service.ts
+├── theme/          # Design tokens
+│   └── tokens.ts
+├── types/          # TypeScript types
+│   └── auth.ts
+└── utils/          # Utility functions
+    └── responsive.ts
+```
+
+## Design System
+
+### Colors
+- Primary: `#2563EB` (Blue-600)
+- Neutral: Slate color palette
+- Error: `#EF4444`
+- Success: `#10B981`
+
+### Spacing
+- xs: 4px
+- sm: 8px
+- md: 16px
+- lg: 24px
+- xl: 32px
+- xxl: 48px
+
+## Tablet Support
+
+แอปจะตรวจจับขนาดหน้าจออัตโนมัติ:
+- Tablet breakpoint: 768px
+- รองรับทุก orientation (Portrait, Landscape)
+- Layout ปรับตามขนาดหน้าจอ
+
+## Development
+
+```bash
+# Start Metro bundler
+npm start
+
+# Run on iOS
 npm run ios
 
-# OR using Yarn
-yarn ios
+# Run on Android
+npm run android
+
+# Lint
+npm run lint
+
+# Test
+npm test
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Troubleshooting
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+### iOS Build Issues
+หาก build ไม่ผ่าน ลองทำตามนี้:
+```bash
+cd ios
+pod deintegrate
+pod install
+cd ..
+npm run ios
+```
 
-## Step 3: Modify your app
+### Android Build Issues
+```bash
+cd android
+./gradlew clean
+cd ..
+npm run android
+```
 
-Now that you have successfully run the app, let's make changes!
+## License
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Private - Jong Court Project

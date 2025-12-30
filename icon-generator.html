@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JongSanam App Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1e40af;
+            margin-bottom: 30px;
+        }
+        #icon-canvas {
+            border-radius: 22.5%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 20px 0;
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        button {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 64, 175, 0.4);
+        }
+        .info {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f3f4f6;
+            border-radius: 10px;
+            text-align: left;
+        }
+        .info h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info li {
+            margin: 5px 0;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏟️ JongSanam App Icon</h1>
+        <canvas id="icon-canvas" width="1024" height="1024"></canvas>
+        <div class="buttons">
+            <button onclick="downloadIcon()">📥 Download Icon (1024x1024)</button>
+            <button onclick="regenerateIcon()">🔄 Regenerate</button>
+        </div>
+        <div class="info">
+            <h3>📱 How to use this icon:</h3>
+            <ul>
+                <li><strong>iOS:</strong> Use an online tool like <a href="https://www.appicon.co/" target="_blank">appicon.co</a> to generate all required sizes</li>
+                <li><strong>Android:</strong> Place in <code>android/app/src/main/res/mipmap-*</code> folders</li>
+                <li><strong>Recommended:</strong> Use <a href="https://easyappicon.com/" target="_blank">easyappicon.com</a> for automatic generation</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function drawIcon() {
+            const canvas = document.getElementById('icon-canvas');
+            const ctx = canvas.getContext('2d');
+            const size = 1024;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#1e40af');
+            gradient.addColorStop(1, '#3b82f6');
+            
+            // Draw rounded rectangle background
+            const radius = size * 0.225; // iOS standard corner radius
+            ctx.fillStyle = gradient;
+            roundRect(ctx, 0, 0, size, size, radius);
+            ctx.fill();
+
+            // Add subtle pattern/texture
+            ctx.globalAlpha = 0.1;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.arc(size * 0.2, size * 0.3 + i * 100, 150, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Draw "JS" text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 480px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Add text shadow for depth
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 10;
+            
+            ctx.fillText('JS', size / 2, size / 2);
+
+            // Add subtle highlight
+            ctx.shadowColor = 'transparent';
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 480px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('JS', size / 2, size / 2 - 5);
+            ctx.globalAlpha = 1;
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function downloadIcon() {
+            const canvas = document.getElementById('icon-canvas');
+            const link = document.createElement('a');
+            link.download = 'jongsanam-icon-1024.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function regenerateIcon() {
+            drawIcon();
+        }
+
+        // Draw icon on load
+        window.onload = drawIcon;
+    </script>
+</body>
+</html>

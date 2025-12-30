@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JongSanam Splash Screen Generator</title>
+    <!-- Import Kanit Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f0f2f5;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+        }
+
+        h1 {
+            color: #1e40af;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        button {
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        }
+
+        button:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(37, 99, 235, 0.3);
+        }
+
+        .desc {
+            color: #64748b;
+            margin-top: 10px;
+        }
+
+        .ratio-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .ratio-btn {
+            background: #e2e8f0;
+            color: #475569;
+            border: 2px solid transparent;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Kanit', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ratio-btn:hover {
+            background: #cbd5e1;
+        }
+
+        .ratio-btn.active {
+            background: #2563EB;
+            color: white;
+            border-color: #1d4ed8;
+        }
+
+        .size-info {
+            background: #f1f5f9;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            color: #475569;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>✨ JongSanam Splash Screen</h1>
+        <p class="desc">เลือกขนาดหน้าจอที่ต้องการ</p>
+
+        <div class="ratio-selector">
+            <button class="ratio-btn" onclick="changeRatio('iphone')" data-ratio="iphone">📱 iPhone (1284x2778)</button>
+            <button class="ratio-btn" onclick="changeRatio('iphone-se')" data-ratio="iphone-se">📱 iPhone SE (750x1334)</button>
+            <button class="ratio-btn" onclick="changeRatio('android')" data-ratio="android">🤖 Android (1080x1920)</button>
+            <button class="ratio-btn" onclick="changeRatio('android-xl')" data-ratio="android-xl">🤖 Android XL (1440x3120)</button>
+            <button class="ratio-btn" onclick="changeRatio('ipad-portrait')" data-ratio="ipad-portrait">📱 iPad Portrait (2048x2732)</button>
+            <button class="ratio-btn active" onclick="changeRatio('ipad-landscape')" data-ratio="ipad-landscape">🖥️ iPad Landscape (2732x2048)</button>
+        </div>
+
+        <div class="size-info" id="sizeInfo">ขนาด: 2732 x 2048 px (iPad Landscape)</div>
+
+        <canvas id="splashCanvas" width="2732" height="2048"></canvas>
+
+        <br>
+        <button onclick="downloadSplash()">📥 ดาวน์โหลดรูปภาพ</button>
+    </div>
+
+    <script>
+        // Screen size presets
+        const screenSizes = {
+            'iphone': { width: 1284, height: 2778, name: 'iPhone 12/13/14 Pro Max' },
+            'iphone-se': { width: 750, height: 1334, name: 'iPhone SE/8' },
+            'android': { width: 1080, height: 1920, name: 'Android FHD' },
+            'android-xl': { width: 1440, height: 3120, name: 'Android QHD+' },
+            'ipad-portrait': { width: 2048, height: 2732, name: 'iPad Portrait' },
+            'ipad-landscape': { width: 2732, height: 2048, name: 'iPad Landscape' }
+        };
+
+        let currentRatio = 'ipad-landscape';
+
+        // Wait for font to load
+        document.fonts.ready.then(function () {
+            drawSplash();
+        });
+
+        function changeRatio(ratio) {
+            currentRatio = ratio;
+            const size = screenSizes[ratio];
+            const canvas = document.getElementById('splashCanvas');
+
+            // Update canvas size
+            canvas.width = size.width;
+            canvas.height = size.height;
+
+            // Update size info
+            document.getElementById('sizeInfo').textContent =
+                `ขนาด: ${size.width} x ${size.height} px (${size.name})`;
+
+            // Update active button
+            document.querySelectorAll('.ratio-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.ratio === ratio) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Redraw splash
+            drawSplash();
+        }
+
+        function drawSplash() {
+            const canvas = document.getElementById('splashCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Calculate scale factor based on screen size
+            const baseSize = Math.min(w, h);
+            const scale = baseSize / 2048; // Base scale from iPad size
+            const isPortrait = h > w;
+
+            // 1. Background Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, '#2563EB');   // Blue 600
+            gradient.addColorStop(1, '#1E40AF');   // Blue 800
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+
+            // 2. Decorative Circles (Subtle Background)
+            ctx.globalAlpha = 0.05;
+            ctx.fillStyle = 'white';
+
+            // Top Circle
+            ctx.beginPath();
+            ctx.arc(w * 0.8, h * 0.1, 600 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Bottom Circle
+            ctx.beginPath();
+            ctx.arc(w * 0.2, h * 0.9, 800 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // 3. Logo Container (Rounded Square)
+            const logoSize = 400 * scale;
+            const centerX = w / 2;
+            const centerY = isPortrait ? h * 0.35 : h / 2 - 100 * scale;
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 40 * scale;
+            ctx.shadowOffsetY = 20 * scale;
+
+            ctx.fillStyle = 'white';
+            roundRect(ctx, centerX - logoSize / 2, centerY - logoSize / 2, logoSize, logoSize, 80 * scale);
+            ctx.fill();
+
+            // Reset Shadow
+            ctx.shadowColor = 'transparent';
+
+            // 4. Logo Text "JS"
+            ctx.fillStyle = '#2563EB';
+            ctx.font = `bold ${Math.round(200 * scale)}px "Kanit", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Slight offset needed for some fonts to look vertically centered
+            ctx.fillText('JS', centerX, centerY + 10 * scale);
+
+            // 5. App Name
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${Math.round(140 * scale)}px "Kanit", sans-serif`;
+            ctx.shadowColor = 'rgba(0,0,0,0.1)';
+            ctx.shadowBlur = 10 * scale;
+            ctx.shadowOffsetY = 5 * scale;
+            ctx.fillText('JongSanam', centerX, centerY + 350 * scale);
+
+            // 6. Tagline
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            const taglineSize = Math.round(60 * scale);
+            ctx.font = `500 ${taglineSize}px "Kanit", sans-serif`;
+
+            // For smaller screens, split tagline into two lines
+            if (w < 1200) {
+                ctx.fillText('ระบบจัดการสนามกีฬา', centerX, centerY + 440 * scale);
+                ctx.fillText('สำหรับเจ้าของสนาม', centerX, centerY + 520 * scale);
+            } else {
+                ctx.fillText('ระบบจัดการสนามกีฬา สำหรับเจ้าของสนาม', centerX, centerY + 460 * scale);
+            }
+
+            // 7. Loading Dots (Optional - adds "alive" feel)
+            const dotY = h - 150 * scale;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = -1; i <= 1; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX + (i * 60 * scale), dotY, 15 * scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function downloadSplash() {
+            const canvas = document.getElementById('splashCanvas');
+            const size = screenSizes[currentRatio];
+            const link = document.createElement('a');
+            link.download = `jongsanam-splash-${currentRatio}-${size.width}x${size.height}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+
+</html>
