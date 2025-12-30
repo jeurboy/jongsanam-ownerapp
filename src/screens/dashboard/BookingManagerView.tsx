@@ -12,7 +12,7 @@ import { th } from 'date-fns/locale';
 
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
-const COURT_COL_WIDTH = 120;
+const COURT_COL_WIDTH = 80;
 const HEADER_HEIGHT = 50; // Height for sport badge + court name
 const ROW_HEIGHT = 60; // Height per hour slot
 const START_HOUR = 8; // 08:00
@@ -153,6 +153,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             if (businessId) {
                 filteredCourts = allCourts.filter(c => c.businessId === businessId);
             }
+
+            // Filter to show only approved courts (or courts without approvalStatus for backwards compatibility)
+            filteredCourts = filteredCourts.filter(c => !c.approvalStatus || c.approvalStatus === 'approved');
 
             console.log(`Courts: ${courtsData.length}, Facilities: ${facilitiesData.length}, Display: ${filteredCourts.length}`);
             setCourts(filteredCourts);
@@ -1756,26 +1759,26 @@ const styles = StyleSheet.create({
     },
     // Tab Styles
     tabContainer: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: 12,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 8,
         backgroundColor: 'rgba(255, 255, 255, 0.4)',
         borderTopWidth: 1,
         borderTopColor: 'rgba(255, 255, 255, 0.3)',
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        marginTop: 10,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        marginTop: 8,
     },
     tabScrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
-        gap: 12,
+        gap: 8,
     },
     tabItem: {
-        paddingHorizontal: 24,
-        paddingVertical: 10,
-        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderRadius: 14,
         backgroundColor: 'rgba(255, 255, 255, 0.5)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.4)',
@@ -1784,19 +1787,19 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary.main,
         borderColor: colors.primary.main,
         shadowColor: colors.primary.main,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 3,
     },
     tabText: {
         fontFamily: fonts.medium,
-        fontSize: 14,
+        fontSize: 12,
         color: colors.neutral[600],
     },
     tabTextSelected: {
         color: colors.white,
-        fontFamily: fonts.bold,
+        fontFamily: fonts.semiBold,
     },
 
     sportBadgeSmall: {
