@@ -132,7 +132,7 @@ export const HomeScreen = () => {
             <View style={styles.imageContainer}>
                 {item.isVector ? (
                     <View style={styles.vectorIconWrapper}>
-                        <MaterialCommunityIcons name={item.iconName as any} size={140} color={item.accent} />
+                        <MaterialCommunityIcons name={item.iconName as any} size={80} color={item.accent} />
                     </View>
                 ) : (
                     <Image source={item.image} style={styles.launcherImage} resizeMode="contain" />
@@ -261,19 +261,19 @@ const styles = StyleSheet.create({
         gap: 32,
     },
     launcherCard: {
-        width: '28%',
-        aspectRatio: 0.85,
+        width: '22%',
+        aspectRatio: 0.9,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: 32,
-        padding: 20,
+        borderRadius: 24,
+        padding: 16,
         // Soft Claymorphism shadow
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
-        shadowRadius: 24,
-        elevation: 6,
+        shadowRadius: 16,
+        elevation: 4,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.8)',
     },
@@ -284,8 +284,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     launcherImage: {
-        width: '110%',
-        height: '110%',
+        width: '70%',
+        height: '70%',
     },
     vectorIconWrapper: {
         width: '100%',
@@ -295,9 +295,9 @@ const styles = StyleSheet.create({
     },
     launcherLabel: {
         fontFamily: 'Kanit-SemiBold',
-        fontSize: 20,
+        fontSize: 16,
         color: colors.neutral[700],
-        marginTop: 10,
+        marginTop: 8,
     },
     statusFooter: {
         marginTop: 100,
