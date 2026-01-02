@@ -7,7 +7,7 @@ import { Booking, BookingStatus } from '../../types/booking';
 import { courtService } from '../../services/court.service';
 import { bookingService } from '../../services/booking.service';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 
 // Constants for table layout
@@ -131,6 +131,33 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     const [editingIsCapacity, setEditingIsCapacity] = useState<boolean>(false);
     const [expandedFacilityId, setExpandedFacilityId] = useState<string | null>(null);
     const [managementMode, setManagementMode] = useState<'SLOT' | 'CAPACITY'>('SLOT');
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Update current time every minute
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, []);
+
+    // Calculate current time indicator position
+    const currentTimeIndicator = useMemo(() => {
+        if (!isToday(selectedDate)) return null;
+
+        const now = currentTime;
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Only show if within visible time range
+        if (currentHour < START_HOUR || currentHour >= END_HOUR) return null;
+
+        const topOffset = ((currentHour - START_HOUR) * ROW_HEIGHT) + ((currentMinute / 60) * ROW_HEIGHT);
+        return {
+            top: topOffset,
+            time: format(now, 'HH:mm'),
+        };
+    }, [selectedDate, currentTime]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -603,6 +630,12 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                         <Text style={styles.timeText}>{time}</Text>
                                                     </View>
                                                 ))}
+                                                {/* Current Time Indicator - Time Column */}
+                                                {currentTimeIndicator && (
+                                                    <View style={[styles.currentTimeLabel, { top: currentTimeIndicator.top - 8 }]}>
+                                                        <Text style={styles.currentTimeLabelText}>{currentTimeIndicator.time}</Text>
+                                                    </View>
+                                                )}
                                             </View>
 
                                             <ScrollView
@@ -614,6 +647,10 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                 scrollEventThrottle={16}
                                             >
                                                 <View style={styles.grid}>
+                                                    {/* Current Time Line across grid */}
+                                                    {currentTimeIndicator && (
+                                                        <View style={[styles.currentTimeLine, { top: currentTimeIndicator.top }]} />
+                                                    )}
                                                     {slotCourts.map((court) => {
                                                         return (
                                                             <View key={court.id} style={styles.courtColumn}>
@@ -1985,5 +2022,35 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 100,
+    },
+    // Current Time Indicator Styles
+    currentTimeLabel: {
+        position: 'absolute',
+        left: 4,
+        right: 4,
+        backgroundColor: '#EF4444',
+        paddingVertical: 2,
+        paddingHorizontal: 4,
+        borderRadius: 4,
+        zIndex: 100,
+    },
+    currentTimeLabelText: {
+        fontFamily: fonts.bold,
+        fontSize: 10,
+        color: colors.white,
+        textAlign: 'center',
+    },
+    currentTimeLine: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: 2,
+        backgroundColor: '#EF4444',
+        zIndex: 50,
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 4,
+        elevation: 5,
     },
 });
