@@ -23,6 +23,8 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { SidebarTab } from '../components/Sidebar';
 import { BookingManagerView } from './dashboard/BookingManagerView';
 import { UserManagerView } from './dashboard/UserManagerView';
+import { QRScannerScreen } from './QRScannerScreen';
+import Orientation from 'react-native-orientation-locker'; // Import Orientation Locker
 
 // Placeholder for the background image
 const HOME_BG_IMAGE = require('../assets/images/home_bg.png');
@@ -54,8 +56,10 @@ export const HomeScreen = () => {
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<SidebarTab>('overview');
+    const [showQRScanner, setShowQRScanner] = useState(false);
 
     useEffect(() => {
+        Orientation.lockToLandscape();
         fetchBusinesses();
     }, []);
 
@@ -111,6 +115,10 @@ export const HomeScreen = () => {
                     onSelect={handleBusinessSelect}
                     containerStyle={styles.businessSelectorContainer}
                 />
+                {/* QR Scanner Button */}
+                <TouchableOpacity style={styles.scannerButton} onPress={() => setShowQRScanner(true)}>
+                    <MaterialCommunityIcons name="qrcode-scan" size={24} color={colors.primary[600]} />
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                     <MaterialCommunityIcons name="logout" size={24} color={colors.neutral[500]} />
                 </TouchableOpacity>
@@ -191,6 +199,13 @@ export const HomeScreen = () => {
                     {renderContent()}
                 </View>
             </DashboardLayout>
+
+            {/* QR Scanner Modal */}
+            <QRScannerScreen
+                visible={showQRScanner}
+                onClose={() => setShowQRScanner(false)}
+                businessId={selectedBusinessId || undefined}
+            />
         </View>
     );
 };
@@ -230,6 +245,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    scannerButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(99, 102, 241, 0.2)',
     },
     launcherContainer: {
         flex: 1,

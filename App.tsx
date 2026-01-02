@@ -14,8 +14,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BootSplash from 'react-native-bootsplash';
 
+import Orientation from 'react-native-orientation-locker';
+
 function App() {
   React.useEffect(() => {
+    Orientation.lockToLandscape(); // Force landscape on app start
     const init = async () => {
       // …do multiple sync or async tasks
     };

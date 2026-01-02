@@ -3,6 +3,15 @@ export const colors = {
         main: '#2563EB',      // blue-600
         light: '#3B82F6',     // blue-500
         dark: '#1E40AF',      // blue-700
+        // Numeric scale for compatibility
+        50: '#EFF6FF',        // blue-50
+        100: '#DBEAFE',       // blue-100
+        200: '#BFDBFE',       // blue-200
+        300: '#93C5FD',       // blue-300
+        400: '#60A5FA',       // blue-400
+        500: '#3B82F6',       // blue-500
+        600: '#2563EB',       // blue-600
+        700: '#1D4ED8',       // blue-700
     },
     neutral: {
         50: '#F8FAFC',        // slate-50

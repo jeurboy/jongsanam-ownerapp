@@ -202,5 +202,59 @@ export const bookingService = {
         }
 
         return response.data;
+    },
+
+    /**
+     * Lookup booking by QR code
+     * @param qrCode - The QR code string (format: JONGSANAM-CHECKIN:{bookingId})
+     */
+    async lookupByQRCode(qrCode: string): Promise<any> {
+        const response = await apiService.get<{ booking: any }>(
+            `/api/court-owner/booking-lookup?qrCode=${encodeURIComponent(qrCode)}`
+        );
+
+        if (response.error) {
+            const error: any = new Error(response.error);
+            // Check if it's a "not your business" error
+            if (response.status === 403) {
+                error.code = 'NOT_YOUR_BUSINESS';
+            }
+            throw error;
+        }
+
+        // Backend GET returns the booking object directly (wrapped in successResponse's data)
+        return response.data || null;
+    },
+
+    /**
+     * Check-in a booking (mark as COMPLETED)
+     */
+    async checkInBooking(bookingId: string): Promise<{ success: boolean }> {
+        const response = await apiService.post<{ success: boolean }>(
+            '/api/court-owner/booking-lookup',
+            { bookingId, action: 'check-in' }
+        );
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false };
+    },
+
+    /**
+     * Mark booking as no-show
+     */
+    async markNoShow(bookingId: string): Promise<{ success: boolean }> {
+        const response = await apiService.post<{ success: boolean }>(
+            '/api/court-owner/booking-lookup',
+            { bookingId, action: 'no-show' }
+        );
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false };
     }
 };
