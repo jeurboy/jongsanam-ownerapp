@@ -10,9 +10,9 @@ try {
 
 // Fallback values when .env is not available
 const FALLBACK_DEV_URL = Platform.select({
-    ios: 'http://localhost:3000',
-    android: 'http://10.0.2.2:3000',
-    default: 'http://localhost:3000',
+    ios: 'https://jongsanam.online',
+    android: 'https://jongsanam.online',
+    default: 'https://jongsanam.online',
 });
 
 const FALLBACK_PROD_URL = 'https://jongsanam.online';

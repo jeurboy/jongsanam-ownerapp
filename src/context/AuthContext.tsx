@@ -91,9 +91,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const login = async (credentials: LoginCredentials) => {
         try {
-            setState(prev => ({ ...prev, isLoading: true }));
-            const response = await authService.login(credentials);
+            console.log('[AuthContext] Login started (NOT setting isLoading to avoid SplashScreen)');
+            // Note: We do NOT set isLoading: true here to prevent showing SplashScreen
+            // The LoginScreen has its own isSubmitting state for the button
 
+            console.log('[AuthContext] Calling authService.login...');
+            const response = await authService.login(credentials);
+            console.log('[AuthContext] Login response received:', { user: response.user?.username });
+
+            console.log('[AuthContext] Setting state: isLoading: false, isAuthenticated: true');
             setState({
                 user: response.user,
                 accessToken: response.accessToken,
@@ -101,8 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 isLoading: false,
                 isAuthenticated: true,
             });
+            console.log('[AuthContext] State updated successfully');
         } catch (error) {
-            setState(prev => ({ ...prev, isLoading: false }));
+            console.error('[AuthContext] Login error:', error);
+            // Don't need to set isLoading: false since we never set it to true
             throw error;
         }
     };

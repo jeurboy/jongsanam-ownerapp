@@ -59,7 +59,7 @@ export const HomeScreen = () => {
     const [showQRScanner, setShowQRScanner] = useState(false);
 
     useEffect(() => {
-        Orientation.lockToLandscape();
+        // Orientation is now handled in AppNavigator
         fetchBusinesses();
     }, []);
 

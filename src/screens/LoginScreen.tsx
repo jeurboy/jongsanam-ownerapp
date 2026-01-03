@@ -152,6 +152,9 @@ export const LoginScreen = () => {
                             <Text style={styles.footerText}>
                                 © 2025 JongSanam. All rights reserved.
                             </Text>
+                            <Text style={[styles.footerText, { marginTop: 8, fontSize: 10 }]}>
+                                API: {require('../config/env').default.apiUrl}
+                            </Text>
                         </View>
                     </View>
                 </View>

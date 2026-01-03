@@ -981,6 +981,52 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     </View>
 
                     <ScrollView style={styles.addModalBody} showsVerticalScrollIndicator={false}>
+                        {/* Customer Info & Price Row - Moved to top */}
+                        <View style={styles.formRow}>
+                            <View style={[styles.formGroup, { flex: 2 }]}>
+                                <Text style={styles.formLabel}>ชื่อลูกค้า *</Text>
+                                <View style={styles.inputContainer}>
+                                    <MaterialCommunityIcons name="account" size={20} color={colors.neutral[400]} />
+                                    <TextInput
+                                        style={styles.textInputReal}
+                                        value={newBooking.customerName}
+                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerName: text }))}
+                                        placeholder="กรอกชื่อลูกค้า"
+                                        placeholderTextColor={colors.neutral[400]}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={[styles.formGroup, { flex: 1.5 }]}>
+                                <Text style={styles.formLabel}>เบอร์โทรศัพท์ *</Text>
+                                <View style={styles.inputContainer}>
+                                    <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[400]} />
+                                    <TextInput
+                                        style={styles.textInputReal}
+                                        value={newBooking.customerPhone}
+                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerPhone: text }))}
+                                        placeholder="0812345678"
+                                        placeholderTextColor={colors.neutral[400]}
+                                        keyboardType="phone-pad"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={[styles.formGroup, { flex: 1 }]}>
+                                <Text style={styles.formLabel}>ราคา (บาท)</Text>
+                                <View style={styles.inputContainer}>
+                                    <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[400]} />
+                                    <TextInput
+                                        style={styles.textInputReal}
+                                        value={newBooking.price}
+                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, price: text }))}
+                                        placeholder="ราคา"
+                                        placeholderTextColor={colors.neutral[400]}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+                        </View>
                         {/* Court Selection */}
                         <View style={styles.formGroup}>
                             <Text style={styles.formLabel}>สนาม *</Text>
@@ -1161,52 +1207,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             </View>
                         </View>
 
-                        {/* Customer Info & Price Row */}
-                        <View style={styles.formRow}>
-                            <View style={[styles.formGroup, { flex: 2 }]}>
-                                <Text style={styles.formLabel}>ชื่อลูกค้า *</Text>
-                                <View style={styles.inputContainer}>
-                                    <MaterialCommunityIcons name="account" size={20} color={colors.neutral[400]} />
-                                    <TextInput
-                                        style={styles.textInputReal}
-                                        value={newBooking.customerName}
-                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerName: text }))}
-                                        placeholder="กรอกชื่อลูกค้า"
-                                        placeholderTextColor={colors.neutral[400]}
-                                    />
-                                </View>
-                            </View>
 
-                            <View style={[styles.formGroup, { flex: 1.5 }]}>
-                                <Text style={styles.formLabel}>เบอร์โทรศัพท์ *</Text>
-                                <View style={styles.inputContainer}>
-                                    <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[400]} />
-                                    <TextInput
-                                        style={styles.textInputReal}
-                                        value={newBooking.customerPhone}
-                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, customerPhone: text }))}
-                                        placeholder="0812345678"
-                                        placeholderTextColor={colors.neutral[400]}
-                                        keyboardType="phone-pad"
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={[styles.formGroup, { flex: 1 }]}>
-                                <Text style={styles.formLabel}>ราคา (บาท)</Text>
-                                <View style={styles.inputContainer}>
-                                    <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[400]} />
-                                    <TextInput
-                                        style={styles.textInputReal}
-                                        value={newBooking.price}
-                                        onChangeText={(text) => setNewBooking(prev => ({ ...prev, price: text }))}
-                                        placeholder="ราคา"
-                                        placeholderTextColor={colors.neutral[400]}
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                            </View>
-                        </View>
 
                         {/* Status Row */}
                         <View style={styles.formGroup}>
