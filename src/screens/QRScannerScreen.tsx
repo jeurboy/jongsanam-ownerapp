@@ -14,7 +14,6 @@ import {
     Platform,
     Linking,
 } from 'react-native';
-import Orientation from 'react-native-orientation-locker'; // Import Orientation Locker
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -79,7 +78,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
     // Initialize camera active state only when visible
     useEffect(() => {
         if (visible) {
-            Orientation.lockToLandscape(); // Force Landscape when scanner opens
+            // Orientation is handled globally in AppNavigator
             setIsActive(true);
             setScanned(false);
             setBookingResult(null);
@@ -88,11 +87,6 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         } else {
             setIsActive(false);
         }
-
-        // Cleanup: Ensures landscape lock persists or resets if needed (though app is landscape-only)
-        return () => {
-            Orientation.lockToLandscape();
-        };
     }, [visible]);
 
     // Cleanup when closing
@@ -252,11 +246,12 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'CONFIRMED': return 'ยืนยันแล้ว';
-            case 'PENDING': return 'รอดำเนินการ';
-            case 'COMPLETED': return 'เสร็จสิ้น';
-            case 'CANCELLED': return 'ยกเลิก';
-            case 'NO_SHOW': return 'ไม่มา';
+            case 'PENDING': return 'การจองสำเร็จ รอการยืนยัน';
+            case 'CONFIRMED': return 'ได้รับการยืนยัน';
+            case 'COMPLETED': return 'ชำระเงินแล้ว';
+            case 'CANCELLED': return 'ถูกยกเลิก';
+            case 'NO_SHOW': return 'ไม่มาใช้บริการ';
+            case 'FAILED': return 'การจองล้มเหลว';
             default: return status;
         }
     };

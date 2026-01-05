@@ -242,9 +242,6 @@ export const bookingService = {
         return response.data || { success: false };
     },
 
-    /**
-     * Mark booking as no-show
-     */
     async markNoShow(bookingId: string): Promise<{ success: boolean }> {
         const response = await apiService.post<{ success: boolean }>(
             '/api/court-owner/booking-lookup',
@@ -256,5 +253,25 @@ export const bookingService = {
         }
 
         return response.data || { success: false };
+    },
+
+    async confirmBooking(id: string, notes?: string): Promise<boolean> {
+        const response = await apiService.post(`/api/owner/bookings/${id}/confirm`, { notes });
+        return !response.error;
+    },
+
+    async cancelBooking(id: string, reason?: string): Promise<boolean> {
+        const response = await apiService.post(`/api/owner/bookings/${id}/cancel`, { reason });
+        return !response.error;
+    },
+
+    async markBookingNoShow(id: string, reason?: string): Promise<boolean> {
+        const response = await apiService.post(`/api/owner/bookings/${id}/no-show`, { reason });
+        return !response.error;
+    },
+
+    async markBookingCompleted(id: string): Promise<boolean> {
+        const response = await apiService.post(`/api/owner/bookings/${id}/complete`, {});
+        return !response.error;
     }
 };

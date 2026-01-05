@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, NativeSyntheticEvent, NativeScrollEvent, useWindowDimensions } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { colors, fonts, spacing, borderRadius } from '../../theme/tokens';
 import { Court } from '../../types/court';
@@ -12,7 +12,8 @@ import { th } from 'date-fns/locale';
 
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
-const COURT_COL_WIDTH = 80;
+const MIN_COURT_COL_WIDTH = 80;
+const MAX_COURT_COL_WIDTH = 200;
 const HEADER_HEIGHT = 50; // Height for sport badge + court name
 const ROW_HEIGHT = 60; // Height per hour slot
 const START_HOUR = 8; // 08:00
@@ -30,6 +31,18 @@ const SPORT_LABELS: Record<string, string> = {
 };
 
 const getSportName = (id: string) => SPORT_LABELS[id] || id;
+
+const translateBookingStatus = (status: string) => {
+    switch (status) {
+        case 'PENDING': return 'การจองสำเร็จ รอการยืนยัน';
+        case 'CONFIRMED': return 'ได้รับการยืนยัน';
+        case 'CANCELLED': return 'ถูกยกเลิก';
+        case 'NO_SHOW': return 'ไม่มาใช้บริการ';
+        case 'COMPLETED': return 'ชำระเงินแล้ว';
+        case 'FAILED': return 'การจองล้มเหลว';
+        default: return status;
+    }
+};
 
 interface BookingManagerViewProps {
     businessId?: string | null;
@@ -99,6 +112,9 @@ const getCourtCapacity = (court: Court): number => {
 
 
 export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
+    // Get window dimensions for dynamic column width
+    const { width: windowWidth } = useWindowDimensions();
+
     // State
     const [loading, setLoading] = useState(true);
     const [courts, setCourts] = useState<Court[]>([]);
@@ -128,8 +144,10 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         status: 'CONFIRMED'
     });
     const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+    const [editingBookingIds, setEditingBookingIds] = useState<string[]>([]); // For bulk editing merged bookings
     const [editingIsCapacity, setEditingIsCapacity] = useState<boolean>(false);
     const [expandedFacilityId, setExpandedFacilityId] = useState<string | null>(null);
+    const [relatedBookingIds, setRelatedBookingIds] = useState<string[]>([]); // Track related merged booking IDs
     const [managementMode, setManagementMode] = useState<'SLOT' | 'CAPACITY'>('SLOT');
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -253,8 +271,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                 if ((b.court?.id || b.courtId) !== courtId) return false;
                 // Exclude capacity bookings - they should only show in capacity view
                 if ((b as any).isCapacity === true) return false;
-                // Exclude cancelled bookings
-                if (b.status === BookingStatus.CANCELLED) return false;
+                if ((b as any).isCapacity === true) return false;
+                // Show all statuses as requested
                 return true;
             })
             .sort((a, b) => new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime());
@@ -312,6 +330,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
         let backgroundColor = 'rgba(147, 197, 253, 0.7)';
         let borderColor = '#3B82F6';
+        let opacity = 1;
+        const isCancelled = mergedBooking.status === BookingStatus.CANCELLED ||
+            mergedBooking.status === BookingStatus.NO_SHOW;
 
         if (mergedBooking.status === BookingStatus.CONFIRMED) {
             backgroundColor = 'rgba(134, 239, 172, 0.7)';
@@ -323,8 +344,13 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             backgroundColor = 'rgba(209, 213, 219, 0.7)';
             borderColor = '#6B7280';
         } else if (mergedBooking.status === BookingStatus.CANCELLED) {
-            backgroundColor = 'rgba(252, 165, 165, 0.7)';
+            backgroundColor = 'rgba(252, 165, 165, 0.4)';
             borderColor = '#EF4444';
+            opacity = 0.5;
+        } else if (mergedBooking.status === BookingStatus.NO_SHOW) {
+            backgroundColor = 'rgba(209, 213, 219, 0.4)';
+            borderColor = '#9CA3AF';
+            opacity = 0.5;
         }
 
         return {
@@ -332,14 +358,18 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             height: height,
             backgroundColor,
             borderColor,
+            opacity,
+            isCancelled,
         };
     };
 
-    const handleBookingPress = async (bookingId: string, isCapacity: boolean = false) => {
+    const handleBookingPress = async (bookingId: string, isCapacity: boolean = false, mergedIds?: string[]) => {
         setLoadingDetail(true);
         setModalVisible(true);
         // Clear previous selection while loading to show spinner
         setSelectedBooking(null);
+        // Track related booking IDs for merged bookings
+        setRelatedBookingIds(mergedIds || [bookingId]);
         try {
             if (isCapacity) {
                 // For capacity bookings, use data from local state (no GET by ID endpoint)
@@ -376,6 +406,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
     const openAddModal = (options: Partial<typeof newBooking> = {}) => {
         setEditingBookingId(null);
+        setEditingBookingIds([]);
         setNewBooking({
             courtId: options.courtId || (courts.length > 0 ? courts[0].id : ''),
             date: options.date || format(selectedDate, 'yyyy-MM-dd'),
@@ -393,6 +424,37 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         if (!selectedBooking) return;
 
         const booking = selectedBooking as any;
+
+        // Check if this is part of a merged booking with multiple IDs
+        if (relatedBookingIds.length > 1) {
+            Alert.alert(
+                'แก้ไขการจอง',
+                `การจองนี้เป็นส่วนหนึ่งของการจองต่อเนื่อง ${relatedBookingIds.length} รายการ ต้องการแก้ไขรายการไหน?`,
+                [
+                    { text: 'ยกเลิก', style: 'cancel' },
+                    {
+                        text: 'แก้ไขรายการเดียว',
+                        onPress: () => {
+                            setEditingBookingIds([booking.id]);
+                            proceedToEditBooking(booking);
+                        }
+                    },
+                    {
+                        text: `แก้ไขทั้งหมด (${relatedBookingIds.length})`,
+                        onPress: () => {
+                            setEditingBookingIds(relatedBookingIds);
+                            proceedToEditBooking(booking);
+                        }
+                    }
+                ]
+            );
+        } else {
+            setEditingBookingIds([booking.id]);
+            proceedToEditBooking(booking);
+        }
+    };
+
+    const proceedToEditBooking = (booking: any) => {
         setEditingBookingId(booking.id);
 
         // Check if this is a capacity booking
@@ -403,10 +465,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         const startDate = parseISO(booking.timeSlotStart);
         const endDate = parseISO(booking.timeSlotEnd);
 
-        let phone = booking.serviceUser?.phone || booking.customerPhone || '';
-        if (phone.startsWith('+66')) {
-            phone = '0' + phone.substring(3);
-        }
+        const phone = booking.serviceUser?.phone || booking.customerPhone || '';
 
         setNewBooking({
             courtId: booking.court?.id || booking.courtId || '',
@@ -453,14 +512,23 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             };
 
             if (editingBookingId) {
-                // Use appropriate update function based on booking type
-                if (editingIsCapacity) {
-                    await bookingService.updateCapacityBooking(editingBookingId, {
-                        ...payload,
-                        facilityId: newBooking.courtId
-                    });
-                } else {
-                    await bookingService.updateBooking(editingBookingId, { ...payload, courtId: newBooking.courtId });
+                // Bulk edit: apply to all editingBookingIds
+                const idsToUpdate = editingBookingIds.length > 0 ? editingBookingIds : [editingBookingId];
+
+                for (const id of idsToUpdate) {
+                    // Use appropriate update function based on booking type
+                    if (editingIsCapacity) {
+                        await bookingService.updateCapacityBooking(id, {
+                            ...payload,
+                            facilityId: newBooking.courtId
+                        });
+                    } else {
+                        await bookingService.updateBooking(id, { ...payload, courtId: newBooking.courtId });
+                    }
+                }
+
+                if (idsToUpdate.length > 1) {
+                    Alert.alert('สำเร็จ', `แก้ไขการจอง ${idsToUpdate.length} รายการเรียบร้อยแล้ว`);
                 }
             } else {
                 if (isCapacity) {
@@ -480,6 +548,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
             setAddModalVisible(false);
             setEditingBookingId(null);
+            setEditingBookingIds([]);
             setEditingIsCapacity(false);
             loadData(); // Refresh bookings
         } catch (error) {
@@ -487,6 +556,192 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             Alert.alert('Error', 'Failed to save booking');
         } finally {
             setAddingBooking(false);
+        }
+    };
+
+    const handleConfirmBooking = async () => {
+        if (!selectedBooking) return;
+
+        // Check if this is part of a merged booking with multiple IDs
+        if (relatedBookingIds.length > 1) {
+            Alert.alert(
+                'ยืนยันการจอง',
+                `การจองนี้เป็นส่วนหนึ่งของการจองต่อเนื่อง ${relatedBookingIds.length} รายการ ต้องการยืนยันรายการไหน?`,
+                [
+                    { text: 'ปิด', style: 'cancel' },
+                    {
+                        text: 'ยืนยันรายการเดียว',
+                        onPress: () => executeBulkAction('confirm', [selectedBooking.id])
+                    },
+                    {
+                        text: `ยืนยันทั้งหมด (${relatedBookingIds.length})`,
+                        onPress: () => executeBulkAction('confirm', relatedBookingIds)
+                    }
+                ]
+            );
+        } else {
+            Alert.alert(
+                'ยืนยันการจอง',
+                'ต้องการยืนยันการจองนี้ใช่หรือไม่?',
+                [
+                    { text: 'ยกเลิก', style: 'cancel' },
+                    {
+                        text: 'ยืนยัน',
+                        onPress: () => executeBulkAction('confirm')
+                    }
+                ]
+            );
+        }
+    };
+
+    // Execute action for single or multiple bookings
+    const executeBulkAction = async (action: 'confirm' | 'cancel' | 'noshow' | 'completed', targetIds?: string[]) => {
+        const ids = targetIds || [selectedBooking!.id];
+
+        setLoadingDetail(true);
+        try {
+            let successCount = 0;
+            for (const id of ids) {
+                let success = false;
+                switch (action) {
+                    case 'confirm':
+                        success = await bookingService.confirmBooking(id);
+                        break;
+                    case 'cancel':
+                        success = await bookingService.cancelBooking(id, "ยกเลิกโดยเจ้าของสนาม");
+                        break;
+                    case 'noshow':
+                        success = await bookingService.markBookingNoShow(id, "ลูกค้าไม่มาใช้บริการ");
+                        break;
+                    case 'completed':
+                        success = await bookingService.markBookingCompleted(id);
+                        break;
+                }
+                if (success) successCount++;
+            }
+
+            if (successCount === ids.length) {
+                const actionText = action === 'confirm' ? 'ยืนยันการจอง' :
+                    action === 'cancel' ? 'ยกเลิกการจอง' :
+                        action === 'noshow' ? 'บันทึกสถานะไม่มาใช้บริการ' : 'บันทึกสถานะชำระเงินแล้ว';
+                Alert.alert('สำเร็จ', ids.length > 1 ? `${actionText} ${successCount} รายการเรียบร้อยแล้ว` : `${actionText}เรียบร้อยแล้ว`);
+                setModalVisible(false);
+                loadData();
+            } else {
+                Alert.alert('ผิดพลาด', `ดำเนินการสำเร็จ ${successCount}/${ids.length} รายการ`);
+            }
+        } catch (error) {
+            Alert.alert('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        } finally {
+            setLoadingDetail(false);
+        }
+    };
+
+    const handleMarkCompleted = async () => {
+        if (!selectedBooking) return;
+
+        // Check if this is part of a merged booking with multiple IDs
+        if (relatedBookingIds.length > 1) {
+            Alert.alert(
+                'ชำระเงินแล้ว',
+                `การจองนี้เป็นส่วนหนึ่งของการจองต่อเนื่อง ${relatedBookingIds.length} รายการ ต้องการบันทึกรายการไหน?`,
+                [
+                    { text: 'ปิด', style: 'cancel' },
+                    {
+                        text: 'บันทึกรายการเดียว',
+                        onPress: () => executeBulkAction('completed', [selectedBooking.id])
+                    },
+                    {
+                        text: `บันทึกทั้งหมด (${relatedBookingIds.length})`,
+                        onPress: () => executeBulkAction('completed', relatedBookingIds)
+                    }
+                ]
+            );
+        } else {
+            Alert.alert(
+                'ชำระเงินแล้ว',
+                'ต้องการบันทึกว่าลูกค้าชำระเงินแล้วใช่หรือไม่?',
+                [
+                    { text: 'ยกเลิก', style: 'cancel' },
+                    {
+                        text: 'ยืนยัน',
+                        onPress: () => executeBulkAction('completed')
+                    }
+                ]
+            );
+        }
+    };
+
+    const handleCancelBooking = async () => {
+        if (!selectedBooking) return;
+
+        // Check if this is part of a merged booking with multiple IDs
+        if (relatedBookingIds.length > 1) {
+            Alert.alert(
+                'ยกเลิกการจอง',
+                `การจองนี้เป็นส่วนหนึ่งของการจองต่อเนื่อง ${relatedBookingIds.length} รายการ ต้องการยกเลิกรายการไหน?`,
+                [
+                    { text: 'ปิด', style: 'cancel' },
+                    {
+                        text: 'ยกเลิกรายการเดียว',
+                        style: 'destructive',
+                        onPress: () => executeBulkAction('cancel', [selectedBooking.id])
+                    },
+                    {
+                        text: `ยกเลิกทั้งหมด (${relatedBookingIds.length})`,
+                        style: 'destructive',
+                        onPress: () => executeBulkAction('cancel', relatedBookingIds)
+                    }
+                ]
+            );
+        } else {
+            Alert.alert(
+                'ยกเลิกการจอง',
+                'ต้องการยกเลิกการจองนี้ใช่หรือไม่?',
+                [
+                    { text: 'ไม่', style: 'cancel' },
+                    {
+                        text: 'ใช่, ยกเลิก',
+                        style: 'destructive',
+                        onPress: () => executeBulkAction('cancel')
+                    }
+                ]
+            );
+        }
+    };
+
+    const handleMarkNoShow = async () => {
+        if (!selectedBooking) return;
+
+        // Check if this is part of a merged booking with multiple IDs
+        if (relatedBookingIds.length > 1) {
+            Alert.alert(
+                'ไม่มาใช้บริการ (No-Show)',
+                `การจองนี้เป็นส่วนหนึ่งของการจองต่อเนื่อง ${relatedBookingIds.length} รายการ ต้องการบันทึกรายการไหน?`,
+                [
+                    { text: 'ปิด', style: 'cancel' },
+                    {
+                        text: 'บันทึกรายการเดียว',
+                        onPress: () => executeBulkAction('noshow', [selectedBooking.id])
+                    },
+                    {
+                        text: `บันทึกทั้งหมด (${relatedBookingIds.length})`,
+                        onPress: () => executeBulkAction('noshow', relatedBookingIds)
+                    }
+                ]
+            );
+        } else {
+            Alert.alert(
+                'ไม่มาใช้บริการ (No-Show)',
+                'ต้องการบันทึกว่าลูกค้าไม่มาใช้บริการใช่หรือไม่?',
+                [
+                    { text: 'ยกเลิก', style: 'cancel' },
+                    {
+                        text: 'ยืนยัน',
+                        onPress: () => executeBulkAction('noshow')
+                    }
+                ]
+            );
         }
     };
 
@@ -523,6 +778,19 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     // Separate courts by type for rendering
     const slotCourts = useMemo(() => filteredCourts.filter(c => getCourtCapacity(c) <= 1), [filteredCourts]);
     const capacityCourts = useMemo(() => filteredCourts.filter(c => getCourtCapacity(c) > 1), [filteredCourts]);
+
+    // Calculate dynamic court column width based on number of courts
+    const courtColumnWidth = useMemo(() => {
+        const numCourts = slotCourts.length;
+        if (numCourts === 0) return MIN_COURT_COL_WIDTH;
+
+        // Available width = window width - time column - some padding
+        const availableWidth = windowWidth - TIME_COL_WIDTH - 100; // 100px for padding/scrollbar
+        const calculatedWidth = Math.floor(availableWidth / numCourts);
+
+        // Clamp between min and max
+        return Math.min(MAX_COURT_COL_WIDTH, Math.max(MIN_COURT_COL_WIDTH, calculatedWidth));
+    }, [slotCourts.length, windowWidth]);
 
     // Generate time options for picker
     const timeOptions = useMemo(() => {
@@ -609,7 +877,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                         ref={headerScrollRef}
                                     >
                                         {slotCourts.map(court => (
-                                            <View key={court.id} style={styles.columnHeader}>
+                                            <View key={court.id} style={[styles.columnHeader, { width: courtColumnWidth }]}>
                                                 <View style={styles.sportBadgeSmall}>
                                                     <Text style={styles.sportBadgeTextSmall}>
                                                         {getSportName(getCourtSportType(court) || 'ทั่วไป')}
@@ -653,7 +921,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                     )}
                                                     {slotCourts.map((court) => {
                                                         return (
-                                                            <View key={court.id} style={styles.courtColumn}>
+                                                            <View key={court.id} style={[styles.courtColumn, { width: courtColumnWidth }]}>
                                                                 {/* Background Grid Cells */}
                                                                 {timeSlots.map((time, tIndex) => (
                                                                     <TouchableOpacity
@@ -681,9 +949,16 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                                     height: bookingStyle.height,
                                                                                     backgroundColor: bookingStyle.backgroundColor,
                                                                                     borderLeftColor: bookingStyle.borderColor,
+                                                                                    opacity: bookingStyle.opacity,
+                                                                                    // Cancelled bookings are half width and aligned to right
+                                                                                    ...(bookingStyle.isCancelled && {
+                                                                                        width: '50%',
+                                                                                        right: 0,
+                                                                                        left: undefined,
+                                                                                    }),
                                                                                 }
                                                                             ]}
-                                                                            onPress={() => handleBookingPress(mergedBooking.bookings[0].id)}
+                                                                            onPress={() => handleBookingPress(mergedBooking.bookings[0].id, false, mergedBooking.ids)}
                                                                             activeOpacity={0.8}
                                                                         >
                                                                             <Text style={styles.bookingText} numberOfLines={1}>
@@ -794,9 +1069,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                                 <Text style={styles.bookingUserPhone}>{booking.customerPhone || booking.serviceUser?.phone}</Text>
                                                                             </View>
                                                                             <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
-                                                                                <Text style={styles.statusTextSmall}>{booking.status}</Text>
-                                                                            </View>
-                                                                        </TouchableOpacity>
+                                                                                <Text style={styles.statusTextSmall}>{translateBookingStatus(booking.status)}</Text>
+                                                                            </View>                                                                        </TouchableOpacity>
                                                                     ))
                                                             ) : (
                                                                 <Text style={styles.emptyBookingsText}>ยังไม่มีรายการจองในขณะนี้</Text>
@@ -878,82 +1152,129 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         {loadingDetail ? (
                             <ActivityIndicator size="large" color={colors.primary.main} style={{ marginVertical: 20 }} />
                         ) : selectedBooking ? (
-                            <View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="account" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View>
-                                        <Text style={styles.detailLabel}>ลูกค้า</Text>
-                                        <Text style={styles.detailValue}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
+                            <View style={styles.modalTwoColumn}>
+                                {/* Left Column: Details */}
+                                <View style={styles.modalLeftColumn}>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="account" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View>
+                                            <Text style={styles.detailLabel}>ลูกค้า</Text>
+                                            <Text style={styles.detailValue}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.detailLabel}>เบอร์โทรศัพท์</Text>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
-                                                if (phone) {
-                                                    Clipboard.setString(phone);
-                                                    Alert.alert('คัดลอกสำเร็จ', `เบอร์ ${phone} ถูกคัดลอกแล้ว`);
-                                                }
-                                            }}
-                                        >
-                                            <View style={styles.copyableRow}>
-                                                <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
-                                                <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
-                                            </View>
-                                        </TouchableOpacity>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.detailLabel}>เบอร์โทรศัพท์</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
+                                                    if (phone) {
+                                                        Clipboard.setString(phone);
+                                                        Alert.alert('คัดลอกสำเร็จ', `เบอร์ ${phone} ถูกคัดลอกแล้ว`);
+                                                    }
+                                                }}
+                                            >
+                                                <View style={styles.copyableRow}>
+                                                    <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
+                                                    <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
+                                                </View>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="map-marker" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View>
-                                        <Text style={styles.detailLabel}>สนาม</Text>
-                                        <Text style={styles.detailValue}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="map-marker" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View>
+                                            <Text style={styles.detailLabel}>สนาม</Text>
+                                            <Text style={styles.detailValue}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="clock-outline" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View>
-                                        <Text style={styles.detailLabel}>เวลา</Text>
-                                        <Text style={styles.detailValue}>
-                                            {format(parseISO(selectedBooking.timeSlotStart), 'd MMM yyyy, HH:mm', { locale: th })} - {format(parseISO(selectedBooking.timeSlotEnd), 'HH:mm')}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View>
-                                        <Text style={styles.detailLabel}>ราคา</Text>
-                                        <Text style={styles.detailValue}>{selectedBooking.totalPrice} บาท</Text>
-                                    </View>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <MaterialCommunityIcons name="list-status" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
-                                    <View>
-                                        <Text style={styles.detailLabel}>สถานะ</Text>
-                                        <View style={[styles.statusBadge, {
-                                            backgroundColor: selectedBooking.status === BookingStatus.CONFIRMED ? '#DCFCE7' :
-                                                selectedBooking.status === BookingStatus.PENDING ? '#FEF9C3' : colors.neutral[100]
-                                        }]}>
-                                            <Text style={[styles.statusText, {
-                                                color: selectedBooking.status === BookingStatus.CONFIRMED ? '#166534' :
-                                                    selectedBooking.status === BookingStatus.PENDING ? '#854D0E' : colors.neutral[700]
-                                            }]}>
-                                                {selectedBooking.status}
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="clock-outline" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View>
+                                            <Text style={styles.detailLabel}>เวลา</Text>
+                                            <Text style={styles.detailValue}>
+                                                {format(parseISO(selectedBooking.timeSlotStart), 'd MMM yyyy, HH:mm', { locale: th })} - {format(parseISO(selectedBooking.timeSlotEnd), 'HH:mm')}
                                             </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View>
+                                            <Text style={styles.detailLabel}>ราคา</Text>
+                                            <Text style={styles.detailValue}>{selectedBooking.totalPrice} บาท</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="list-status" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View>
+                                            <Text style={styles.detailLabel}>สถานะ</Text>
+                                            <View style={[styles.statusBadge, {
+                                                backgroundColor: selectedBooking.status === BookingStatus.CONFIRMED ? '#DCFCE7' :
+                                                    selectedBooking.status === BookingStatus.PENDING ? '#FEF9C3' : colors.neutral[100]
+                                            }]}>
+                                                <Text style={[styles.statusText, {
+                                                    color: selectedBooking.status === BookingStatus.CONFIRMED ? '#166534' :
+                                                        selectedBooking.status === BookingStatus.PENDING ? '#854D0E' : colors.neutral[700]
+                                                }]}>
+                                                    {translateBookingStatus(selectedBooking.status)}
+                                                </Text>
+                                            </View>
                                         </View>
                                     </View>
                                 </View>
 
-                                <TouchableOpacity
-                                    style={styles.editButton}
-                                    onPress={handleEditBooking}
-                                >
-                                    <MaterialCommunityIcons name="pencil" size={20} color={colors.white} />
-                                    <Text style={styles.editButtonText}>แก้ไขการจอง</Text>
-                                </TouchableOpacity>
+                                {/* Right Column: Action Buttons */}
+                                <View style={styles.modalRightColumn}>
+                                    <TouchableOpacity
+                                        style={styles.editButton}
+                                        onPress={handleEditBooking}
+                                    >
+                                        <MaterialCommunityIcons name="pencil" size={20} color={colors.white} />
+                                        <Text style={styles.editButtonText}>แก้ไขการจอง</Text>
+                                    </TouchableOpacity>
+
+                                    {/* Action Buttons based on Status */}
+                                    <View style={styles.actionButtonsContainer}>
+                                        {selectedBooking.status === 'PENDING' && (
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, styles.confirmButton]}
+                                                onPress={handleConfirmBooking}
+                                            >
+                                                <MaterialCommunityIcons name="check-circle" size={20} color={colors.white} />
+                                                <Text style={styles.actionButtonText}>ยืนยันการจอง</Text>
+                                            </TouchableOpacity>
+                                        )}
+
+                                        {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
+                                            <>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.completedButton]}
+                                                    onPress={handleMarkCompleted}
+                                                >
+                                                    <MaterialCommunityIcons name="cash-check" size={20} color={colors.white} />
+                                                    <Text style={styles.actionButtonText}>ชำระเงินแล้ว</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.noShowButton]}
+                                                    onPress={handleMarkNoShow}
+                                                >
+                                                    <MaterialCommunityIcons name="account-remove" size={20} color={colors.white} />
+                                                    <Text style={styles.actionButtonText}>ไม่มาใช้บริการ (No-Show)</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.cancelButtonModal]}
+                                                    onPress={handleCancelBooking}
+                                                >
+                                                    <MaterialCommunityIcons name="close-circle" size={20} color={colors.white} />
+                                                    <Text style={styles.actionButtonText}>ยกเลิกการจอง</Text>
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                    </View>
+                                </View>
                             </View>
                         ) : (
                             <Text style={styles.errorText}>ไม่พบข้อมูลการจอง</Text>
@@ -1212,8 +1533,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         {/* Status Row */}
                         <View style={styles.formGroup}>
                             <Text style={styles.formLabel}>สถานะ</Text>
-                            <View style={styles.statusRow}>
-                                {['CONFIRMED', 'PENDING'].map(status => (
+                            <View style={[styles.statusRow, { flexWrap: 'wrap', rowGap: 8 }]}>
+                                {['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].map(status => (
                                     <TouchableOpacity
                                         key={status}
                                         style={[
@@ -1221,17 +1542,26 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                             newBooking.status === status && styles.statusChipSelected,
                                             status === 'CONFIRMED' && { borderColor: '#22C55E' },
                                             status === 'PENDING' && { borderColor: '#EAB308' },
+                                            status === 'COMPLETED' && { borderColor: '#3B82F6' },
+                                            status === 'CANCELLED' && { borderColor: '#EF4444' },
+                                            status === 'NO_SHOW' && { borderColor: '#64748B' },
                                             newBooking.status === status && status === 'CONFIRMED' && { backgroundColor: '#DCFCE7' },
-                                            newBooking.status === status && status === 'PENDING' && { backgroundColor: '#FEF9C3' }
+                                            newBooking.status === status && status === 'PENDING' && { backgroundColor: '#FEF9C3' },
+                                            newBooking.status === status && status === 'COMPLETED' && { backgroundColor: '#DBEAFE' },
+                                            newBooking.status === status && status === 'CANCELLED' && { backgroundColor: '#FEE2E2' },
+                                            newBooking.status === status && status === 'NO_SHOW' && { backgroundColor: '#F1F5F9' }
                                         ]}
                                         onPress={() => setNewBooking(prev => ({ ...prev, status }))}
                                     >
                                         <Text style={[
                                             styles.statusChipText,
                                             status === 'CONFIRMED' && { color: '#166534' },
-                                            status === 'PENDING' && { color: '#854D0E' }
+                                            status === 'PENDING' && { color: '#854D0E' },
+                                            status === 'COMPLETED' && { color: '#1E40AF' },
+                                            status === 'CANCELLED' && { color: '#991B1B' },
+                                            status === 'NO_SHOW' && { color: '#334155' }
                                         ]}>
-                                            {status === 'CONFIRMED' ? 'ยืนยัน' : 'รอดำเนินการ'}
+                                            {translateBookingStatus(status)}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -1381,7 +1711,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[50],
     },
     columnHeader: {
-        width: COURT_COL_WIDTH,
+        width: MIN_COURT_COL_WIDTH,
         justifyContent: 'center',
         alignItems: 'center',
         borderRightWidth: 1,
@@ -1423,7 +1753,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     courtColumn: {
-        width: COURT_COL_WIDTH,
+        width: MIN_COURT_COL_WIDTH,
         borderRightWidth: 1,
         borderRightColor: colors.neutral[100],
         position: 'relative',
@@ -1470,13 +1800,27 @@ const styles = StyleSheet.create({
         backgroundColor: colors.white,
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
-        width: 400,
-        maxWidth: '90%',
+        width: '80%',
+        maxWidth: 800,
         shadowColor: colors.black,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 16,
         elevation: 8,
+    },
+    modalTwoColumn: {
+        flexDirection: 'row',
+        gap: spacing.xl,
+    },
+    modalLeftColumn: {
+        flex: 1,
+        borderRightWidth: 1,
+        borderRightColor: colors.neutral[100],
+        paddingRight: spacing.xl,
+    },
+    modalRightColumn: {
+        flex: 1,
+        paddingLeft: spacing.md,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -2053,5 +2397,35 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.5,
         shadowRadius: 4,
         elevation: 5,
+    },
+    // New Action Button Styles
+    actionButtonsContainer: {
+        marginTop: spacing.md,
+        gap: spacing.sm,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: borderRadius.md,
+        gap: spacing.xs,
+    },
+    confirmButton: {
+        backgroundColor: '#22C55E', // Green
+    },
+    noShowButton: {
+        backgroundColor: '#EAB308', // Yellow/Orange
+    },
+    completedButton: {
+        backgroundColor: '#3B82F6', // Blue
+    },
+    cancelButtonModal: {
+        backgroundColor: '#EF4444', // Red
+    },
+    actionButtonText: {
+        fontFamily: fonts.medium,
+        fontSize: 14,
+        color: colors.white,
     },
 });

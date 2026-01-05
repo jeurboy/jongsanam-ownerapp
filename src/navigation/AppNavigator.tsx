@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { HomeScreen } from '../screens/HomeScreen';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors } from '../theme/tokens';
-import Orientation from 'react-native-orientation-locker';
 
 import { SplashScreen } from '../screens/SplashScreen';
 
@@ -22,13 +21,8 @@ export const AppNavigator = () => {
 
     console.log('[AppNavigator] Render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
 
-    // Handle orientation based on authentication status
-    useEffect(() => {
-        if (!isLoading && isAuthenticated) {
-            console.log('[AppNavigator] Locking to Landscape');
-            Orientation.lockToLandscape();
-        }
-    }, [isLoading, isAuthenticated]);
+
+    // Orientation is handled globally in App.tsx at startup
 
     if (isLoading) {
         return <SplashScreen />;

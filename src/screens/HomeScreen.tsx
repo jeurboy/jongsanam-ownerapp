@@ -24,7 +24,7 @@ import { SidebarTab } from '../components/Sidebar';
 import { BookingManagerView } from './dashboard/BookingManagerView';
 import { UserManagerView } from './dashboard/UserManagerView';
 import { QRScannerScreen } from './QRScannerScreen';
-import Orientation from 'react-native-orientation-locker'; // Import Orientation Locker
+
 
 // Placeholder for the background image
 const HOME_BG_IMAGE = require('../assets/images/home_bg.png');
