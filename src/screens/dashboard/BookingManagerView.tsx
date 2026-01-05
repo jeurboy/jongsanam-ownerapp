@@ -341,8 +341,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             backgroundColor = 'rgba(253, 224, 71, 0.7)';
             borderColor = '#EAB308';
         } else if (mergedBooking.status === BookingStatus.COMPLETED) {
-            backgroundColor = 'rgba(209, 213, 219, 0.7)';
-            borderColor = '#6B7280';
+            backgroundColor = 'rgba(147, 197, 253, 0.7)';
+            borderColor = '#3B82F6';
         } else if (mergedBooking.status === BookingStatus.CANCELLED) {
             backgroundColor = 'rgba(252, 165, 165, 0.4)';
             borderColor = '#EF4444';
@@ -443,7 +443,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         text: `แก้ไขทั้งหมด (${relatedBookingIds.length})`,
                         onPress: () => {
                             setEditingBookingIds(relatedBookingIds);
-                            proceedToEditBooking(booking);
+                            proceedToEditBooking(booking, relatedBookingIds);
                         }
                     }
                 ]
@@ -454,14 +454,63 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         }
     };
 
-    const proceedToEditBooking = (booking: any) => {
+    const proceedToEditBooking = (booking: any, bulkEditIds?: string[]) => {
         setEditingBookingId(booking.id);
 
         // Check if this is a capacity booking
         const isCapacity = booking.isCapacity === true;
         setEditingIsCapacity(isCapacity);
 
-        // Parse date and times
+        // For bulk edit, aggregate data from all related bookings
+        if (bulkEditIds && bulkEditIds.length > 1) {
+            // Find all bookings in the bulk edit
+            const relatedBookings = bookings.filter(b => bulkEditIds.includes(b.id));
+            console.log('[BulkEdit] bulkEditIds:', bulkEditIds);
+            console.log('[BulkEdit] bookings count:', bookings.length);
+            console.log('[BulkEdit] relatedBookings found:', relatedBookings.length);
+            console.log('[BulkEdit] relatedBookings:', relatedBookings.map(b => ({ id: b.id, start: b.timeSlotStart, end: b.timeSlotEnd, price: b.totalPrice })));
+
+            if (relatedBookings.length > 0) {
+                // Calculate combined start time (earliest), end time (latest), and total price
+                const sortedByStart = [...relatedBookings].sort(
+                    (a, b) => new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime()
+                );
+                const sortedByEnd = [...relatedBookings].sort(
+                    (a, b) => new Date(b.timeSlotEnd).getTime() - new Date(a.timeSlotEnd).getTime()
+                );
+
+                const earliestStart = parseISO(sortedByStart[0].timeSlotStart);
+                const latestEnd = parseISO(sortedByEnd[0].timeSlotEnd);
+                const totalPrice = relatedBookings.reduce((sum, b) => sum + Number(b.totalPrice || 0), 0);
+
+                console.log('[BulkEdit] Aggregated - earliestStart:', format(earliestStart, 'HH:mm'), 'latestEnd:', format(latestEnd, 'HH:mm'), 'totalPrice:', totalPrice);
+
+                const phone = booking.serviceUser?.phone || booking.customerPhone || '';
+
+                const formattedStartTime = format(earliestStart, 'HH:mm');
+                const formattedEndTime = format(latestEnd, 'HH:mm');
+                console.log('[BulkEdit] Setting form - startTime:', formattedStartTime, 'endTime:', formattedEndTime);
+
+                setNewBooking({
+                    courtId: booking.court?.id || booking.courtId || '',
+                    date: format(earliestStart, 'yyyy-MM-dd'),
+                    startTime: formattedStartTime,
+                    endTime: formattedEndTime,
+                    customerName: booking.serviceUser?.name || booking.customerName || '',
+                    customerPhone: phone,
+                    price: totalPrice > 0 ? totalPrice.toString() : '',
+                    status: booking.status
+                });
+
+                console.log('[BulkEdit] newBooking set with endTime:', formattedEndTime);
+
+                setModalVisible(false);
+                setAddModalVisible(true);
+                return;
+            }
+        }
+
+        // Single booking edit - use original logic
         const startDate = parseISO(booking.timeSlotStart);
         const endDate = parseISO(booking.timeSlotEnd);
 
@@ -501,29 +550,42 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
             const selectedCourt = courts.find(c => c.id === newBooking.courtId);
             const isCapacity = selectedCourt ? getCourtCapacity(selectedCourt) > 1 : false;
 
-            const payload = {
-                date: newBooking.date,
-                startTime: newBooking.startTime,
-                endTime: newBooking.endTime,
-                customerName: newBooking.customerName,
-                customerPhone: newBooking.customerPhone,
-                price: newBooking.price ? parseFloat(newBooking.price) : undefined,
-                status: newBooking.status
-            };
-
             if (editingBookingId) {
                 // Bulk edit: apply to all editingBookingIds
                 const idsToUpdate = editingBookingIds.length > 0 ? editingBookingIds : [editingBookingId];
+                const isBulkEdit = idsToUpdate.length > 1;
+
+                // For bulk edit, divide price by number of slots to store per-slot price
+                const totalPrice = newBooking.price ? parseFloat(newBooking.price) : undefined;
+                const pricePerSlot = isBulkEdit && totalPrice !== undefined
+                    ? Math.round((totalPrice / idsToUpdate.length) * 100) / 100
+                    : totalPrice;
 
                 for (const id of idsToUpdate) {
+                    // For bulk edit, don't send time fields as each booking has different times
+                    const updatePayload = isBulkEdit ? {
+                        customerName: newBooking.customerName,
+                        customerPhone: newBooking.customerPhone,
+                        price: pricePerSlot,
+                        status: newBooking.status
+                    } : {
+                        date: newBooking.date,
+                        startTime: newBooking.startTime,
+                        endTime: newBooking.endTime,
+                        customerName: newBooking.customerName,
+                        customerPhone: newBooking.customerPhone,
+                        price: totalPrice,
+                        status: newBooking.status
+                    };
+
                     // Use appropriate update function based on booking type
                     if (editingIsCapacity) {
                         await bookingService.updateCapacityBooking(id, {
-                            ...payload,
+                            ...updatePayload,
                             facilityId: newBooking.courtId
                         });
                     } else {
-                        await bookingService.updateBooking(id, { ...payload, courtId: newBooking.courtId });
+                        await bookingService.updateBooking(id, { ...updatePayload, courtId: isBulkEdit ? undefined : newBooking.courtId });
                     }
                 }
 
@@ -531,16 +593,27 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     Alert.alert('สำเร็จ', `แก้ไขการจอง ${idsToUpdate.length} รายการเรียบร้อยแล้ว`);
                 }
             } else {
+                // Create new booking
+                const createPayload = {
+                    date: newBooking.date,
+                    startTime: newBooking.startTime,
+                    endTime: newBooking.endTime,
+                    customerName: newBooking.customerName,
+                    customerPhone: newBooking.customerPhone,
+                    price: newBooking.price ? parseFloat(newBooking.price) : undefined,
+                    status: newBooking.status
+                };
+
                 if (isCapacity) {
                     await bookingService.createCapacityBooking({
-                        ...payload,
+                        ...createPayload,
                         facilityId: newBooking.courtId,
                         businessId: businessId || '99999',
                         quantity: 1
                     });
                 } else {
                     await bookingService.createBooking({
-                        ...payload,
+                        ...createPayload,
                         courtId: newBooking.courtId
                     });
                 }
@@ -958,7 +1031,26 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                                     }),
                                                                                 }
                                                                             ]}
-                                                                            onPress={() => handleBookingPress(mergedBooking.bookings[0].id, false, mergedBooking.ids)}
+                                                                            onPress={() => {
+                                                                                console.log('[MergedBooking] Pressed:', mergedBooking.id, 'ids:', mergedBooking.ids);
+                                                                                // If multiple slots, show picker to select which slot to view
+                                                                                if (mergedBooking.bookings.length > 1) {
+                                                                                    const options = mergedBooking.bookings.map((b) => ({
+                                                                                        text: `${format(parseISO(b.timeSlotStart), 'HH:mm')} - ${format(parseISO(b.timeSlotEnd), 'HH:mm')}`,
+                                                                                        onPress: () => handleBookingPress(b.id, false, mergedBooking.ids)
+                                                                                    }));
+                                                                                    Alert.alert(
+                                                                                        'เลือกช่วงเวลา',
+                                                                                        `การจองนี้มี ${mergedBooking.bookings.length} ช่วงเวลา`,
+                                                                                        [
+                                                                                            ...options,
+                                                                                            { text: 'ยกเลิก', style: 'cancel' }
+                                                                                        ]
+                                                                                    );
+                                                                                } else {
+                                                                                    handleBookingPress(mergedBooking.bookings[0].id, false, mergedBooking.ids);
+                                                                                }
+                                                                            }}
                                                                             activeOpacity={0.8}
                                                                         >
                                                                             <Text style={styles.bookingText} numberOfLines={1}>
@@ -1393,7 +1485,22 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             </View>
                         </View>
 
-                        {/* Time Selection Row */}
+                        {/* Time Selection Row - Read-only for bulk edit */}
+                        {editingBookingIds.length > 1 ? (
+                            <View style={styles.formRow}>
+                                <View style={[styles.formGroup, { flex: 1 }]}>
+                                    <Text style={styles.formLabel}>เวลา (รวม {editingBookingIds.length} รายการ)</Text>
+                                    <View style={[styles.formValue, { backgroundColor: colors.neutral[100], padding: 12, borderRadius: 8 }]}>
+                                        <Text style={{ fontFamily: fonts.medium, fontSize: 16, color: colors.neutral[800] }}>
+                                            {newBooking.startTime} - {newBooking.endTime}
+                                        </Text>
+                                        <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.neutral[500], marginTop: 4 }}>
+                                            ไม่สามารถเปลี่ยนเวลาได้เมื่อแก้ไขหลายรายการพร้อมกัน
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                        ) : (
                         <View style={styles.formRow}>
                             <View style={[styles.formGroup, { flex: 1 }]}>
                                 <Text style={styles.formLabel}>เวลาเริ่ม *</Text>
@@ -1405,6 +1512,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
                                         // Count active bookings for this slot
                                         const activeBookingsAtSlot = bookings.filter(b => {
+                                            // Skip all bookings being edited (for bulk edit)
+                                            if (editingBookingIds.length > 0 && editingBookingIds.includes(b.id)) return false;
                                             // Skip current booking if editing
                                             if (editingBookingId && b.id === editingBookingId) return false;
 
@@ -1485,6 +1594,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
 
                                             // Count bookings at this specific slot
                                             const countAtSlot = bookings.filter(b => {
+                                                // Exclude all bookings being edited (for bulk edit)
+                                                if (editingBookingIds.length > 0 && editingBookingIds.includes(b.id)) return false;
                                                 if (editingBookingId && b.id === editingBookingId) return false;
                                                 if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
                                                 if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
@@ -1511,8 +1622,13 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                     isDisabled && styles.timeButtonDisabled
                                                 ]}
                                                 onPress={() => {
+                                                    console.log('[EndTime] Pressed:', time, 'isDisabled:', isDisabled, 'isInvalid:', isInvalid, 'hasOverlap:', hasOverlap);
                                                     if (isDisabled) return;
-                                                    setNewBooking(prev => ({ ...prev, endTime: time }));
+                                                    console.log('[EndTime] Setting endTime to:', time);
+                                                    setNewBooking(prev => {
+                                                        console.log('[EndTime] prev.endTime:', prev.endTime, '-> new endTime:', time);
+                                                        return { ...prev, endTime: time };
+                                                    });
                                                 }}
                                                 disabled={isDisabled}
                                             >
@@ -1527,8 +1643,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                 </View>
                             </View>
                         </View>
-
-
+                        )}
 
                         {/* Status Row */}
                         <View style={styles.formGroup}>

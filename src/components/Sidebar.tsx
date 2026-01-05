@@ -4,7 +4,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, fontSize } from '../theme/tokens';
 
-export type SidebarTab = 'overview' | 'booking' | 'users' | 'settings';
+export type SidebarTab = 'overview' | 'dashboard' | 'booking' | 'users' | 'settings';
 
 interface SidebarProps {
     activeTab: SidebarTab;
@@ -14,6 +14,7 @@ interface SidebarProps {
 
 const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
     { id: 'overview', icon: 'home', label: 'หน้าหลัก' },
+    { id: 'dashboard', icon: 'chart-box', label: 'ภาพรวม' },
     { id: 'booking', icon: 'calendar-clock', label: 'จัดการการจอง' },
     { id: 'users', icon: 'account-group', label: 'จัดการสมาชิก' },
     { id: 'settings', icon: 'cog-outline', label: 'ตั้งค่า' },

@@ -23,6 +23,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { SidebarTab } from '../components/Sidebar';
 import { BookingManagerView } from './dashboard/BookingManagerView';
 import { UserManagerView } from './dashboard/UserManagerView';
+import { DashboardView } from './dashboard/DashboardView';
 import { QRScannerScreen } from './QRScannerScreen';
 
 
@@ -175,6 +176,8 @@ export const HomeScreen = () => {
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'dashboard':
+                return <DashboardView businessId={selectedBusinessId || '9999'} />;
             case 'booking':
                 return <BookingManagerView businessId={selectedBusinessId || '9999'} />;
             case 'users':
@@ -195,7 +198,7 @@ export const HomeScreen = () => {
                 isTransparent={true}
             >
                 <View style={{ flex: 1 }}>
-                    {activeTab !== 'overview' && <StickyHeader />}
+                    {(activeTab !== 'overview') && <StickyHeader />}
                     {renderContent()}
                 </View>
             </DashboardLayout>
