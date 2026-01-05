@@ -167,22 +167,40 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         }
     };
 
-    const handleCheckIn = async () => {
+    const processStatusUpdate = async (action: 'check-in' | 'confirm') => {
         if (!bookingResult) return;
-
         setCheckingIn(true);
         try {
-            await bookingService.checkInBooking(bookingResult.id);
+            await bookingService.updateBookingStatus(bookingResult.id, action);
+            const statusText = action === 'check-in' ? 'ชำระเงินแล้ว' : 'ยืนยันสนาม';
             Alert.alert(
-                'Check-in สำเร็จ! ✓',
-                `ลูกค้า ${bookingResult.customer?.name || 'ไม่ระบุ'} เข้าใช้งานเรียบร้อยแล้ว`,
+                'บันทึกสำเร็จ! ✓',
+                `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว\nลูกค้า: ${bookingResult.customer?.name || 'ไม่ระบุ'}`,
                 [{ text: 'ตกลง', onPress: () => handleReset() }]
             );
         } catch (err: any) {
-            Alert.alert('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถ check-in ได้');
+            Alert.alert('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถทำรายการได้');
         } finally {
             setCheckingIn(false);
         }
+    };
+
+    const handleCheckIn = () => {
+        Alert.alert(
+            'เลือกสถานะ',
+            'กรุณาเลือกสถานะที่ต้องการบันทึก',
+            [
+                { text: 'ยกเลิก', style: 'cancel' },
+                {
+                    text: 'ยืนยันสนาม',
+                    onPress: () => processStatusUpdate('confirm')
+                },
+                {
+                    text: 'ชำระเงินแล้ว',
+                    onPress: () => processStatusUpdate('check-in')
+                }
+            ]
+        );
     };
 
     const handleNoShow = async () => {
@@ -235,22 +253,23 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'CONFIRMED': return { bg: '#DCFCE7', text: '#16A34A' };
-            case 'PENDING': return { bg: '#FEF9C3', text: '#CA8A04' };
-            case 'COMPLETED': return { bg: '#DBEAFE', text: '#2563EB' };
-            case 'CANCELLED': return { bg: '#FEE2E2', text: '#DC2626' };
-            case 'NO_SHOW': return { bg: '#F3E8FF', text: '#9333EA' };
+            case 'CONFIRMED': return { bg: '#DCFCE7', text: '#166534' };
+            case 'PENDING': return { bg: '#FEF9C3', text: '#854D0E' };
+            case 'COMPLETED': return { bg: '#DBEAFE', text: '#1E40AF' };
+            case 'CANCELLED': return { bg: '#FEE2E2', text: '#991B1B' };
+            case 'NO_SHOW': return { bg: '#F1F5F9', text: '#334155' };
+            case 'FAILED': return { bg: '#FEE2E2', text: '#991B1B' };
             default: return { bg: '#F1F5F9', text: '#64748B' };
         }
     };
 
-    const getStatusLabel = (status: string) => {
+    const translateBookingStatus = (status: string) => {
         switch (status) {
             case 'PENDING': return 'การจองสำเร็จ รอการยืนยัน';
             case 'CONFIRMED': return 'ได้รับการยืนยัน';
-            case 'COMPLETED': return 'ชำระเงินแล้ว';
             case 'CANCELLED': return 'ถูกยกเลิก';
             case 'NO_SHOW': return 'ไม่มาใช้บริการ';
+            case 'COMPLETED': return 'ชำระเงินแล้ว';
             case 'FAILED': return 'การจองล้มเหลว';
             default: return status;
         }
@@ -469,7 +488,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                             styles.statusText,
                             { color: getStatusColor(bookingResult!.status).text }
                         ]}>
-                            {getStatusLabel(bookingResult!.status)}
+                            {translateBookingStatus(bookingResult!.status)}
                         </Text>
                     </View>
 
@@ -543,7 +562,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                     <View style={styles.divider} />
 
                     <View style={styles.actionsSection}>
-                        {bookingResult!.status === 'CONFIRMED' && (
+                        {bookingResult!.status !== 'COMPLETED' && (
                             <>
                                 <TouchableOpacity
                                     style={styles.checkInButton}
@@ -570,20 +589,6 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                             <View style={styles.completedBanner}>
                                 <MaterialCommunityIcons name="check-circle" size={24} color="#16A34A" />
                                 <Text style={styles.completedText}>Check-in เรียบร้อยแล้ว</Text>
-                            </View>
-                        )}
-
-                        {bookingResult!.status === 'CANCELLED' && (
-                            <View style={styles.cancelledBanner}>
-                                <MaterialCommunityIcons name="cancel" size={24} color="#DC2626" />
-                                <Text style={styles.cancelledText}>การจองถูกยกเลิก</Text>
-                            </View>
-                        )}
-
-                        {bookingResult!.status === 'NO_SHOW' && (
-                            <View style={styles.noShowBanner}>
-                                <MaterialCommunityIcons name="account-off" size={24} color="#9333EA" />
-                                <Text style={styles.noShowBannerText}>ลูกค้าไม่มา</Text>
                             </View>
                         )}
 

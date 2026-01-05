@@ -16,7 +16,7 @@ const MIN_COURT_COL_WIDTH = 80;
 const MAX_COURT_COL_WIDTH = 200;
 const HEADER_HEIGHT = 50; // Height for sport badge + court name
 const ROW_HEIGHT = 60; // Height per hour slot
-const START_HOUR = 8; // 08:00
+const START_HOUR = 0; // 00:00
 const END_HOUR = 24;  // 24:00 (Midnight)
 
 const SPORT_LABELS: Record<string, string> = {
@@ -121,6 +121,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedSport, setSelectedSport] = useState<string>('ALL'); // New State
+    const [capacitySearchQuery, setCapacitySearchQuery] = useState(''); // Search state for capacity bookings
 
     // Refs for synchronized scrolling
     const headerScrollRef = useRef<ScrollView>(null);
@@ -913,7 +914,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             <MaterialCommunityIcons name="chevron-left" size={30} color={colors.neutral[600]} />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.todayButton} onPress={() => setSelectedDate(new Date())}>
-                            <Text style={styles.todayText}>วันนี้</Text>
+                            <Text style={styles.todayText}>{'วันนี้'}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))}>
                             <MaterialCommunityIcons name="chevron-right" size={30} color={colors.neutral[600]} />
@@ -1092,8 +1093,44 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                             </TouchableOpacity>
                                         </View>
 
+                                        {/* Search Input */}
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            backgroundColor: colors.white,
+                                            borderRadius: 8,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 8,
+                                            marginBottom: 16,
+                                            borderWidth: 1,
+                                            borderColor: colors.neutral[200]
+                                        }}>
+                                            <MaterialCommunityIcons name="magnify" size={20} color={colors.neutral[400]} />
+                                            <TextInput
+                                                style={{ flex: 1, marginLeft: 8, fontFamily: fonts.regular, fontSize: 14, color: colors.neutral[900], padding: 0 }}
+                                                placeholder="ค้นหาชื่อ หรือ เบอร์โทร..."
+                                                placeholderTextColor={colors.neutral[400]}
+                                                value={capacitySearchQuery}
+                                                onChangeText={setCapacitySearchQuery}
+                                            />
+                                            {capacitySearchQuery.length > 0 && (
+                                                <TouchableOpacity onPress={() => setCapacitySearchQuery('')}>
+                                                    <MaterialCommunityIcons name="close-circle" size={16} color={colors.neutral[400]} />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
                                         {capacityCourts.map(facility => {
-                                            const facilityBookings = bookings.filter(b => (b.courtId === facility.id || b.court?.id === facility.id) && b.status !== 'CANCELLED');
+                                            const facilityBookings = bookings.filter(b => {
+                                                if ((b.courtId !== facility.id && b.court?.id !== facility.id) || b.status === 'CANCELLED') return false;
+
+                                                if (!capacitySearchQuery) return true;
+                                                const query = capacitySearchQuery.toLowerCase();
+                                                const name = (b.customerName || b.serviceUser?.name || '').toLowerCase();
+                                                const phone = (b.customerPhone || b.serviceUser?.phone || '');
+
+                                                return name.includes(query) || phone.includes(query);
+                                            });
                                             const uniquePhones = new Set(facilityBookings.map(b => b.customerPhone || b.serviceUser?.phone)).size;
                                             const isExpanded = expandedFacilityId === facility.id;
 
@@ -1162,7 +1199,8 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                             </View>
                                                                             <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
                                                                                 <Text style={styles.statusTextSmall}>{translateBookingStatus(booking.status)}</Text>
-                                                                            </View>                                                                        </TouchableOpacity>
+                                                                            </View>
+                                                                        </TouchableOpacity>
                                                                     ))
                                                             ) : (
                                                                 <Text style={styles.emptyBookingsText}>ยังไม่มีรายการจองในขณะนี้</Text>
@@ -1217,7 +1255,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             ))}
                         </ScrollView>
                     </View>
-                </View>
+                </View >
             )
             }
 
@@ -1247,6 +1285,28 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                             <View style={styles.modalTwoColumn}>
                                 {/* Left Column: Details */}
                                 <View style={styles.modalLeftColumn}>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="pound" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.detailLabel}>รหัสการจอง</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    if (selectedBooking.id) {
+                                                        Clipboard.setString(selectedBooking.id);
+                                                        Alert.alert('คัดลอกสำเร็จ', 'รหัสการจองถูกคัดลอกแล้ว');
+                                                    }
+                                                }}
+                                            >
+                                                <View style={styles.copyableRow}>
+                                                    <Text style={[styles.detailValueCopyable, { fontSize: 13 }]} numberOfLines={1} ellipsizeMode="middle">
+                                                        {selectedBooking.id}
+                                                    </Text>
+                                                    <MaterialCommunityIcons name="content-copy" size={14} color={colors.primary.main} />
+                                                </View>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+
                                     <View style={styles.detailRow}>
                                         <MaterialCommunityIcons name="account" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
                                         <View>
@@ -1501,148 +1561,151 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                 </View>
                             </View>
                         ) : (
-                        <View style={styles.formRow}>
-                            <View style={[styles.formGroup, { flex: 1 }]}>
-                                <Text style={styles.formLabel}>เวลาเริ่ม *</Text>
-                                <View style={styles.timeGrid}>
-                                    {timeOptions.map(time => {
-                                        const selectedCourt = courts.find(c => c.id === newBooking.courtId);
-                                        const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
-                                        const isCapacity = capacity > 1;
+                            <View style={styles.formRow}>
+                                <View style={[styles.formGroup, { flex: 1 }]}>
+                                    <Text style={styles.formLabel}>เวลาเริ่ม *</Text>
+                                    <View style={styles.timeGrid}>
+                                        {timeOptions.map(time => {
+                                            const selectedCourt = courts.find(c => c.id === newBooking.courtId);
+                                            const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
+                                            const isCapacity = capacity > 1;
 
-                                        // Count active bookings for this slot
-                                        const activeBookingsAtSlot = bookings.filter(b => {
-                                            // Skip all bookings being edited (for bulk edit)
-                                            if (editingBookingIds.length > 0 && editingBookingIds.includes(b.id)) return false;
-                                            // Skip current booking if editing
-                                            if (editingBookingId && b.id === editingBookingId) return false;
-
-                                            if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
-                                            if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
-
-                                            const bStart = new Date(b.timeSlotStart);
-                                            const bEnd = new Date(b.timeSlotEnd);
-                                            const [h, m] = time.split(':').map(Number);
-                                            const slotTime = new Date(selectedDate);
-                                            slotTime.setHours(h, m, 0, 0);
-
-                                            return slotTime >= bStart && slotTime < bEnd;
-                                        }).length;
-
-                                        const isDisabled = isCapacity ? activeBookingsAtSlot >= capacity : activeBookingsAtSlot > 0;
-
-                                        return (
-                                            <TouchableOpacity
-                                                key={`start-${time}`}
-                                                style={[
-                                                    styles.timeButton,
-                                                    newBooking.startTime === time && styles.timeButtonSelected,
-                                                    isDisabled && styles.timeButtonDisabled
-                                                ]}
-                                                onPress={() => {
-                                                    if (isDisabled) return;
-                                                    const [h, m] = time.split(':').map(Number);
-                                                    const endH = (h + 1) % 24;
-                                                    setNewBooking(prev => ({
-                                                        ...prev,
-                                                        startTime: time,
-                                                        endTime: `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-                                                    }));
-                                                }}
-                                                disabled={isDisabled}
-                                            >
-                                                <Text style={[
-                                                    styles.timeButtonText,
-                                                    newBooking.startTime === time && styles.timeButtonTextSelected,
-                                                    isDisabled && styles.timeButtonTextDisabled
-                                                ]}>{time}</Text>
-                                                {isDisabled && <Text style={styles.bookedLabel}>เต็มแล้ว</Text>}
-                                                {isCapacity && activeBookingsAtSlot > 0 && activeBookingsAtSlot < capacity && (
-                                                    <Text style={[styles.bookedLabel, { color: colors.primary.main }]}>
-                                                        {activeBookingsAtSlot}/{capacity}
-                                                    </Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-                            <View style={[styles.formGroup, { flex: 1 }]}>
-                                <Text style={styles.formLabel}>เวลาสิ้นสุด *</Text>
-                                <View style={styles.timeGrid}>
-                                    {timeOptions.map(time => {
-                                        // Check if this end time would overlap with a booking
-                                        const [startH, startM] = newBooking.startTime.split(':').map(Number);
-                                        const [endH, endM] = time.split(':').map(Number);
-
-                                        // End time must be after start time
-                                        const startMinutes = startH * 60 + startM;
-                                        const endMinutes = endH * 60 + endM;
-                                        const isInvalid = endMinutes <= startMinutes;
-
-                                        const selectedCourt = courts.find(c => c.id === newBooking.courtId);
-                                        const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
-                                        const isCapacity = capacity > 1;
-
-                                        // Check if range overlaps with existing bookings (for capacity, check if any slot in range is full)
-                                        const hasOverlap = timeOptions.some(optTime => {
-                                            const [optH, optM] = optTime.split(':').map(Number);
-                                            const optTotalMinutes = optH * 60 + optM;
-
-                                            // Only check slots within the proposed range
-                                            if (optTotalMinutes < startMinutes || optTotalMinutes >= endMinutes) return false;
-
-                                            // Count bookings at this specific slot
-                                            const countAtSlot = bookings.filter(b => {
-                                                // Exclude all bookings being edited (for bulk edit)
+                                            // Count active bookings for this slot
+                                            const activeBookingsAtSlot = bookings.filter(b => {
+                                                // Skip all bookings being edited (for bulk edit)
                                                 if (editingBookingIds.length > 0 && editingBookingIds.includes(b.id)) return false;
+                                                // Skip current booking if editing
                                                 if (editingBookingId && b.id === editingBookingId) return false;
+
                                                 if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
                                                 if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
 
                                                 const bStart = new Date(b.timeSlotStart);
                                                 const bEnd = new Date(b.timeSlotEnd);
+                                                const [h, m] = time.split(':').map(Number);
                                                 const slotTime = new Date(selectedDate);
-                                                slotTime.setHours(optH, optM, 0, 0);
+                                                slotTime.setHours(h, m, 0, 0);
 
                                                 return slotTime >= bStart && slotTime < bEnd;
                                             }).length;
 
-                                            return isCapacity ? countAtSlot >= capacity : countAtSlot > 0;
-                                        });
+                                            const isDisabled = isCapacity ? activeBookingsAtSlot >= capacity : activeBookingsAtSlot > 0;
 
-                                        const isDisabled = isInvalid || hasOverlap;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`start-${time}`}
+                                                    style={[
+                                                        styles.timeButton,
+                                                        newBooking.startTime === time && styles.timeButtonSelected,
+                                                        isDisabled && styles.timeButtonDisabled
+                                                    ]}
+                                                    onPress={() => {
+                                                        if (isDisabled) return;
+                                                        const [h, m] = time.split(':').map(Number);
+                                                        const endH = (h + 1) % 24;
+                                                        setNewBooking(prev => ({
+                                                            ...prev,
+                                                            startTime: time,
+                                                            endTime: `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                                                        }));
+                                                    }}
+                                                    disabled={isDisabled}
+                                                >
+                                                    <Text style={[
+                                                        styles.timeButtonText,
+                                                        newBooking.startTime === time && styles.timeButtonTextSelected,
+                                                        isDisabled && styles.timeButtonTextDisabled
+                                                    ]}>{time}</Text>
+                                                    {/* Status Text for Full/Disabled */}
+                                                    {isDisabled ? <Text style={styles.bookedLabel}>เต็มแล้ว</Text> : null}
 
-                                        return (
-                                            <TouchableOpacity
-                                                key={`end-${time}`}
-                                                style={[
-                                                    styles.timeButton,
-                                                    newBooking.endTime === time && styles.timeButtonSelected,
-                                                    isDisabled && styles.timeButtonDisabled
-                                                ]}
-                                                onPress={() => {
-                                                    console.log('[EndTime] Pressed:', time, 'isDisabled:', isDisabled, 'isInvalid:', isInvalid, 'hasOverlap:', hasOverlap);
-                                                    if (isDisabled) return;
-                                                    console.log('[EndTime] Setting endTime to:', time);
-                                                    setNewBooking(prev => {
-                                                        console.log('[EndTime] prev.endTime:', prev.endTime, '-> new endTime:', time);
-                                                        return { ...prev, endTime: time };
-                                                    });
-                                                }}
-                                                disabled={isDisabled}
-                                            >
-                                                <Text style={[
-                                                    styles.timeButtonText,
-                                                    newBooking.endTime === time && styles.timeButtonTextSelected,
-                                                    isDisabled && styles.timeButtonTextDisabled
-                                                ]}>{time}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
+                                                    {/* Capacity Counter */}
+                                                    {(isCapacity && activeBookingsAtSlot > 0 && activeBookingsAtSlot < capacity) ? (
+                                                        <Text style={[styles.bookedLabel, { color: colors.primary.main }]}>
+                                                            {activeBookingsAtSlot}/{capacity}
+                                                        </Text>
+                                                    ) : null}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                                <View style={[styles.formGroup, { flex: 1 }]}>
+                                    <Text style={styles.formLabel}>เวลาสิ้นสุด *</Text>
+                                    <View style={styles.timeGrid}>
+                                        {timeOptions.map(time => {
+                                            // Check if this end time would overlap with a booking
+                                            const [startH, startM] = newBooking.startTime.split(':').map(Number);
+                                            const [endH, endM] = time.split(':').map(Number);
+
+                                            // End time must be after start time
+                                            const startMinutes = startH * 60 + startM;
+                                            const endMinutes = endH * 60 + endM;
+                                            const isInvalid = endMinutes <= startMinutes;
+
+                                            const selectedCourt = courts.find(c => c.id === newBooking.courtId);
+                                            const capacity = selectedCourt ? getCourtCapacity(selectedCourt) : 1;
+                                            const isCapacity = capacity > 1;
+
+                                            // Check if range overlaps with existing bookings (for capacity, check if any slot in range is full)
+                                            const hasOverlap = timeOptions.some(optTime => {
+                                                const [optH, optM] = optTime.split(':').map(Number);
+                                                const optTotalMinutes = optH * 60 + optM;
+
+                                                // Only check slots within the proposed range
+                                                if (optTotalMinutes < startMinutes || optTotalMinutes >= endMinutes) return false;
+
+                                                // Count bookings at this specific slot
+                                                const countAtSlot = bookings.filter(b => {
+                                                    // Exclude all bookings being edited (for bulk edit)
+                                                    if (editingBookingIds.length > 0 && editingBookingIds.includes(b.id)) return false;
+                                                    if (editingBookingId && b.id === editingBookingId) return false;
+                                                    if ((b.court?.id || b.courtId) !== newBooking.courtId) return false;
+                                                    if (['CANCELLED', 'NO_SHOW'].includes(b.status)) return false;
+
+                                                    const bStart = new Date(b.timeSlotStart);
+                                                    const bEnd = new Date(b.timeSlotEnd);
+                                                    const slotTime = new Date(selectedDate);
+                                                    slotTime.setHours(optH, optM, 0, 0);
+
+                                                    return slotTime >= bStart && slotTime < bEnd;
+                                                }).length;
+
+                                                return isCapacity ? countAtSlot >= capacity : countAtSlot > 0;
+                                            });
+
+                                            const isDisabled = isInvalid || hasOverlap;
+
+                                            return (
+                                                <TouchableOpacity
+                                                    key={`end-${time}`}
+                                                    style={[
+                                                        styles.timeButton,
+                                                        newBooking.endTime === time && styles.timeButtonSelected,
+                                                        isDisabled && styles.timeButtonDisabled
+                                                    ]}
+                                                    onPress={() => {
+                                                        console.log('[EndTime] Pressed:', time, 'isDisabled:', isDisabled, 'isInvalid:', isInvalid, 'hasOverlap:', hasOverlap);
+                                                        if (isDisabled) return;
+                                                        console.log('[EndTime] Setting endTime to:', time);
+                                                        setNewBooking(prev => {
+                                                            console.log('[EndTime] prev.endTime:', prev.endTime, '-> new endTime:', time);
+                                                            return { ...prev, endTime: time };
+                                                        });
+                                                    }}
+                                                    disabled={isDisabled}
+                                                >
+                                                    <Text style={[
+                                                        styles.timeButtonText,
+                                                        newBooking.endTime === time && styles.timeButtonTextSelected,
+                                                        isDisabled && styles.timeButtonTextDisabled
+                                                    ]}>{time}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
                                 </View>
                             </View>
-                        </View>
                         )}
 
                         {/* Status Row */}

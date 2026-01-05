@@ -242,6 +242,19 @@ export const bookingService = {
         return response.data || { success: false };
     },
 
+    async updateBookingStatus(bookingId: string, action: 'check-in' | 'confirm' | 'no-show' | 'cancel'): Promise<{ success: boolean }> {
+        const response = await apiService.post<{ success: boolean }>(
+            '/api/court-owner/booking-lookup',
+            { bookingId, action }
+        );
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false };
+    },
+
     async markNoShow(bookingId: string): Promise<{ success: boolean }> {
         const response = await apiService.post<{ success: boolean }>(
             '/api/court-owner/booking-lookup',
