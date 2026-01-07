@@ -4,6 +4,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { colors, fonts, spacing, borderRadius } from '../../theme/tokens';
 import { Court } from '../../types/court';
 import { Booking, BookingStatus } from '../../types/booking';
+import { SportFilterTabs } from '../../components/common/SportFilterTabs';
 import { courtService } from '../../services/court.service';
 import { bookingService } from '../../services/booking.service';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -28,7 +29,9 @@ const SPORT_LABELS: Record<string, string> = {
     'basketball': 'บาสเกตบอล',
     'volleyball': 'วอลเลย์บอล',
     'swimming': 'ว่ายน้ำ',
-    'fitness': 'ฟิตเนส'
+    'fitness': 'ฟิตเนส',
+    'yoga': 'โยคะ',
+    'gym': 'ยิม'
 };
 
 const getSportName = (id: string) => SPORT_LABELS[id] || id;
@@ -1339,41 +1342,26 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         )
                     )}
 
-                    {/* Sport Tabs - Moved to Bottom like Navigation */}
-                    <View style={styles.tabContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContent}>
-                            {sportTabs.filter(sport => {
-                                // Keep 'ALL' always visible
-                                if (sport === 'ALL') return true;
 
-                                // Check relevance based on management mode using ALL courts (not filtered)
-                                const allSlotCourts = courts.filter(c => getCourtCapacity(c) <= 1);
-                                const allCapacityCourts = courts.filter(c => getCourtCapacity(c) > 1);
+                    {/* Sport Tabs - Reused Component */}
+                    <SportFilterTabs
+                        sports={sportTabs.filter(sport => {
+                            // Keep 'ALL' always visible
+                            if (sport === 'ALL') return true;
 
-                                if (managementMode === 'SLOT') {
-                                    return allSlotCourts.some(c => getCourtSportType(c) === sport);
-                                } else {
-                                    return allCapacityCourts.some(c => getCourtSportType(c) === sport);
-                                }
-                            }).map(sport => (
-                                <TouchableOpacity
-                                    key={sport}
-                                    style={[
-                                        styles.tabItem,
-                                        selectedSport === sport && styles.tabItemSelected
-                                    ]}
-                                    onPress={() => setSelectedSport(sport)}
-                                >
-                                    <Text style={[
-                                        styles.tabText,
-                                        selectedSport === sport && styles.tabTextSelected
-                                    ]}>
-                                        {sport === 'ALL' ? 'ทั้งหมด' : getSportName(sport)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+                            // Check relevance based on management mode using ALL courts (not filtered)
+                            const allSlotCourts = courts.filter(c => getCourtCapacity(c) <= 1);
+                            const allCapacityCourts = courts.filter(c => getCourtCapacity(c) > 1);
+
+                            if (managementMode === 'SLOT') {
+                                return allSlotCourts.some(c => getCourtSportType(c) === sport);
+                            } else {
+                                return allCapacityCourts.some(c => getCourtSportType(c) === sport);
+                            }
+                        })}
+                        selectedSport={selectedSport}
+                        onSelectSport={setSelectedSport}
+                    />
                 </View >
             )
             }
@@ -2588,50 +2576,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: colors.white,
     },
-    // Tab Styles
-    tabContainer: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.3)',
-        borderBottomLeftRadius: 16,
-        borderBottomRightRadius: 16,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        marginTop: 8,
-    },
-    tabScrollContent: {
-        flexGrow: 1,
-        justifyContent: 'center',
-        gap: 8,
-    },
-    tabItem: {
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.4)',
-    },
-    tabItemSelected: {
-        backgroundColor: colors.primary.main,
-        borderColor: colors.primary.main,
-        shadowColor: colors.primary.main,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        elevation: 3,
-    },
-    tabText: {
-        fontFamily: fonts.medium,
-        fontSize: 12,
-        color: colors.neutral[600],
-    },
-    tabTextSelected: {
-        color: colors.white,
-        fontFamily: fonts.semiBold,
-    },
+
 
     sportBadgeSmall: {
         backgroundColor: colors.neutral[100],

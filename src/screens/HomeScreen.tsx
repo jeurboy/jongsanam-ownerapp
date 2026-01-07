@@ -20,6 +20,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { SidebarTab } from '../components/Sidebar';
 import { BookingManagerView } from './dashboard/BookingManagerView';
+import { CourtManagerView } from './dashboard/CourtManagerView';
 import { UserManagerView } from './dashboard/UserManagerView';
 import { DashboardView } from './dashboard/DashboardView';
 import { SettingsView } from './dashboard/SettingsView';
@@ -176,6 +177,8 @@ export const HomeScreen = () => {
                 return <DashboardView businessId={selectedBusinessId || '9999'} />;
             case 'booking':
                 return <BookingManagerView businessId={selectedBusinessId || '9999'} />;
+            case 'courts':
+                return <CourtManagerView businessId={selectedBusinessId || '9999'} />;
             case 'users':
                 return <UserManagerView businessId={selectedBusinessId || '9999'} />;
             case 'settings':

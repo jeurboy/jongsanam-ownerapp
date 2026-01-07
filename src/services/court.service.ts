@@ -36,10 +36,29 @@ export const courtService = {
             id: item.id,
             name: item.name,
             businessId: item.businessId,
-            capacity: item.capacity || 20,
+            capacity: item.capacity || item.maxCapacity || 20,
             isCapacity: true, // Mark explicit endpoint source
+            // Map standard court fields for display compatibility
+            openingHour: item.openTime || item.openingHoursStart || '00:00',
+            closingHour: item.closeTime || item.operatingHoursEnd || '23:59',
+            hourlyRate: item.pricePerSlot || item.pricePerHour || 0,
             // Ensure sportTypeIds exists if logical
             sportTypeIds: item.sportTypeIds || (item.sportType ? [item.sportType] : [])
         })) || [];
+    },
+    async updateCourt(id: string, data: Partial<Court>): Promise<Court | null> {
+        // Map frontend fields (openingHour/closingHour) to backend expected fields (openTime/closeTime)
+        const payload: any = { ...data };
+        if (data.openingHour) payload.openTime = data.openingHour;
+        if (data.closingHour) payload.closeTime = data.closingHour;
+        if (data.hourlyRate) payload.pricePerHour = Number(data.hourlyRate);
+
+        const response = await apiService.put<Court>(`/api/court-owner/courts/${id}`, payload);
+
+        if (response.error) {
+            console.error('Error updating court:', response.error);
+            return null;
+        }
+        return response.data || null;
     }
 };
