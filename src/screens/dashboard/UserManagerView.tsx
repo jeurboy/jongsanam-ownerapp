@@ -434,7 +434,7 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'transparent', paddingLeft: 40, paddingRight: spacing.lg, paddingTop: spacing.lg },
+    container: { flex: 1, backgroundColor: 'transparent', paddingLeft: 10, paddingRight: spacing.lg, paddingTop: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontFamily: fonts.regular, fontSize: fontSize.md, color: colors.neutral[500], marginTop: spacing.sm },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: spacing.lg, backgroundColor: 'rgba(255, 255, 255, 0.6)', borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' },

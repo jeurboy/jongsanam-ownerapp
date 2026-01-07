@@ -24,8 +24,9 @@ import {
 } from 'react-native-vision-camera';
 import { colors, spacing, fontSize, borderRadius } from '../theme/tokens';
 import { bookingService } from '../services/booking.service';
-import { format, parseISO } from 'date-fns';
+import { format as dateFnsFormat, parseISO } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { translateBookingStatus } from '../utils/statusTranslation';
 
 interface BookingLookupResult {
     id: string;
@@ -172,7 +173,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         setCheckingIn(true);
         try {
             await bookingService.updateBookingStatus(bookingResult.id, action);
-            const statusText = action === 'check-in' ? 'ชำระเงินแล้ว' : 'ยืนยันสนาม';
+            const statusText = action === 'check-in' ? 'ลูกค้ามาใช้บริการแล้ว' : 'ยืนยันสนาม';
             Alert.alert(
                 'บันทึกสำเร็จ! ✓',
                 `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว\nลูกค้า: ${bookingResult.customer?.name || 'ไม่ระบุ'}`,
@@ -196,7 +197,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                     onPress: () => processStatusUpdate('confirm')
                 },
                 {
-                    text: 'ชำระเงินแล้ว',
+                    text: 'ลูกค้ามาใช้บริการแล้ว',
                     onPress: () => processStatusUpdate('check-in')
                 }
             ]
@@ -263,17 +264,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         }
     };
 
-    const translateBookingStatus = (status: string) => {
-        switch (status) {
-            case 'PENDING': return 'การจองสำเร็จ รอการยืนยัน';
-            case 'CONFIRMED': return 'ได้รับการยืนยัน';
-            case 'CANCELLED': return 'ถูกยกเลิก';
-            case 'NO_SHOW': return 'ไม่มาใช้บริการ';
-            case 'COMPLETED': return 'ชำระเงินแล้ว';
-            case 'FAILED': return 'การจองล้มเหลว';
-            default: return status;
-        }
-    };
+
 
     if (!visible) return null;
 
@@ -533,7 +524,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                             <View style={styles.detailContent}>
                                 <Text style={styles.detailLabel}>วันที่</Text>
                                 <Text style={styles.detailValue}>
-                                    {format(parseISO(bookingResult!.timeSlotStart), 'd MMMM yyyy', { locale: th })}
+                                    {dateFnsFormat(parseISO(bookingResult!.timeSlotStart), 'd MMMM yyyy', { locale: th })}
                                 </Text>
                             </View>
                         </View>
@@ -543,7 +534,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                             <View style={styles.detailContent}>
                                 <Text style={styles.detailLabel}>เวลา</Text>
                                 <Text style={styles.detailValue}>
-                                    {format(parseISO(bookingResult!.timeSlotStart), 'HH:mm')} - {format(parseISO(bookingResult!.timeSlotEnd), 'HH:mm')}
+                                    {dateFnsFormat(parseISO(bookingResult!.timeSlotStart), 'HH:mm')} - {dateFnsFormat(parseISO(bookingResult!.timeSlotEnd), 'HH:mm')}
                                 </Text>
                             </View>
                         </View>

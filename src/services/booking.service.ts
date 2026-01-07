@@ -286,5 +286,15 @@ export const bookingService = {
     async markBookingCompleted(id: string): Promise<boolean> {
         const response = await apiService.post(`/api/owner/bookings/${id}/complete`, {});
         return !response.error;
+    },
+
+    async markAsPaid(id: string): Promise<boolean> {
+        const response = await apiService.post(`/api/owner/bookings/${id}/payment`, {});
+        return !response.error;
+    },
+
+    async unmarkAsPaid(id: string): Promise<boolean> {
+        const response = await apiService.delete(`/api/owner/bookings/${id}/payment`);
+        return !response.error;
     }
 };

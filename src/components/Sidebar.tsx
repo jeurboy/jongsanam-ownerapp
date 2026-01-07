@@ -28,6 +28,11 @@ export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps)
             styles.container,
             { paddingTop: Math.max(insets.top, spacing.lg) }
         ]}>
+            <Image
+                source={require('../assets/jongsanam_logo_light.png')}
+                style={styles.logo}
+                resizeMode="contain"
+            />
             <View style={styles.glassNav}>
                 {MENU_ITEMS.map((item) => {
                     const isActive = activeTab === item.id;
@@ -66,6 +71,12 @@ const styles = StyleSheet.create({
         height: '100%',
         alignItems: 'center',
         paddingHorizontal: 8,
+    },
+    logo: {
+        width: 80,
+        height: 80,
+        marginBottom: 8,
+        borderRadius: 12,
     },
     glassNav: {
         width: '100%',

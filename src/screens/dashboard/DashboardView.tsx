@@ -172,7 +172,7 @@ export const DashboardView = ({ businessId }: DashboardViewProps) => {
                     <View style={styles.cardIconWrapper}>
                         <MaterialCommunityIcons name="check-circle" size={28} color="#10B981" />
                     </View>
-                    <Text style={styles.cardLabel}>เสร็จสิ้น</Text>
+                    <Text style={styles.cardLabel}>ลูกค้ามาใช้บริการแล้ว</Text>
                     <Text style={[styles.cardValue, { color: '#10B981' }]}>
                         {formatNumber(summary?.completed || 0)}
                     </Text>
@@ -214,7 +214,7 @@ export const DashboardView = ({ businessId }: DashboardViewProps) => {
                         </View>
                         <View style={styles.statusItem}>
                             <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
-                            <Text style={styles.statusLabel}>เสร็จสิ้น</Text>
+                            <Text style={styles.statusLabel}>ลูกค้ามาใช้บริการแล้ว</Text>
                             <Text style={styles.statusValue}>{byStatus?.COMPLETED || 0}</Text>
                         </View>
                         <View style={styles.statusItem}>
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         padding: spacing.lg,
-        paddingLeft: 40,
+        paddingLeft: 10,
     },
     loadingContainer: {
         flex: 1,

@@ -10,10 +10,8 @@ import {
     Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius } from '../theme/tokens';
-import { responsive } from '../utils/responsive';
 import { BusinessSelector } from '../components/BusinessSelector';
 import { businessService } from '../services/business.service';
 import { Business } from '../types/business';
@@ -26,9 +24,6 @@ import { UserManagerView } from './dashboard/UserManagerView';
 import { DashboardView } from './dashboard/DashboardView';
 import { QRScannerScreen } from './QRScannerScreen';
 
-
-// Placeholder for the background image
-const HOME_BG_IMAGE = require('../assets/images/home_bg.png');
 
 const MENU_ITEMS = [
     {
@@ -224,9 +219,9 @@ const styles = StyleSheet.create({
     },
     stickyHeader: {
         backgroundColor: 'transparent',
-        paddingLeft: 40, // Increased to align with content below
+        paddingLeft: 10,
         paddingRight: spacing.lg,
-        paddingTop: 12,
+        paddingTop: 24,
         paddingBottom: 8,
         zIndex: 10,
         borderBottomWidth: 0,
@@ -265,7 +260,8 @@ const styles = StyleSheet.create({
     },
     launcherContent: {
         flexGrow: 1,
-        padding: 40,
+        padding: 24, // Reduced overall padding
+        paddingLeft: 10, // Explicitly reduce left padding
         justifyContent: 'center',
     },
     launcherHeader: {
@@ -287,6 +283,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: 32,
+        paddingHorizontal: 60,
     },
     launcherCard: {
         width: '22%',

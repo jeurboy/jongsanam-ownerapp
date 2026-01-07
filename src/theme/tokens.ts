@@ -29,6 +29,7 @@ export const colors = {
     black: '#000000',
     error: '#EF4444',       // red-500
     success: '#10B981',     // green-500
+    warning: '#F59E0B',     // amber-500
 };
 
 export const spacing = {

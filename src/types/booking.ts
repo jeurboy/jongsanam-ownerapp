@@ -26,6 +26,9 @@ export interface Booking {
     totalPrice: number;
     notes?: string;
 
+    isPaid?: boolean;
+    paidAt?: string;
+
     customerName?: string;
     customerPhone?: string;
 
