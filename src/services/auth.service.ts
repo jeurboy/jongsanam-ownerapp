@@ -140,4 +140,32 @@ export const authService = {
     async updateStoredAccessToken(token: string): Promise<void> {
         await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
     },
+
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+        try {
+            const token = await this.getStoredAccessToken();
+            if (!token) throw new Error('Not authenticated');
+
+            const response = await fetch(`${API_BASE_URL}/api/court-owner/profile/change-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || data.error || 'Change password failed');
+            }
+        } catch (error) {
+            console.error('Change password error:', error);
+            throw error;
+        }
+    },
 };

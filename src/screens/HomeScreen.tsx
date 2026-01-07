@@ -22,6 +22,7 @@ import { SidebarTab } from '../components/Sidebar';
 import { BookingManagerView } from './dashboard/BookingManagerView';
 import { UserManagerView } from './dashboard/UserManagerView';
 import { DashboardView } from './dashboard/DashboardView';
+import { SettingsView } from './dashboard/SettingsView';
 import { QRScannerScreen } from './QRScannerScreen';
 
 
@@ -177,6 +178,8 @@ export const HomeScreen = () => {
                 return <BookingManagerView businessId={selectedBusinessId || '9999'} />;
             case 'users':
                 return <UserManagerView businessId={selectedBusinessId || '9999'} />;
+            case 'settings':
+                return <SettingsView businessId={selectedBusinessId || '9999'} />;
             case 'overview':
             default:
                 return renderOverview();
