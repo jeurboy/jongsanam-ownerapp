@@ -31,21 +31,38 @@ const MENU_ITEMS = [
     {
         id: 'overview',
         title: 'หน้าหลัก',
-        image: require('../assets/launcher/dashboard_flat.png'),
+        image: require('../assets/launcher/icon_home.png'),
         accent: '#6366F1',
+    },
+    {
+        id: 'dashboard',
+        title: 'ภาพรวม',
+        image: require('../assets/launcher/icon_dashboard.png'),
+        accent: '#3B82F6',
     },
     {
         id: 'booking',
         title: 'จัดการการจอง',
-        image: require('../assets/launcher/booking_flat.png'),
+        image: require('../assets/launcher/icon_booking.png'),
         accent: '#10B981',
+    },
+    {
+        id: 'courts',
+        title: 'จัดการสนาม',
+        image: require('../assets/launcher/icon_court.png'),
+        accent: '#EF4444',
     },
     {
         id: 'customer',
         title: 'จัดการสมาชิก',
-        isVector: true,
-        iconName: 'account-group',
+        image: require('../assets/launcher/icon_users.png'),
         accent: '#F59E0B',
+    },
+    {
+        id: 'settings',
+        title: 'ตั้งค่า',
+        image: require('../assets/launcher/icon_settings.png'),
+        accent: '#64748B',
     },
 ];
 
@@ -133,16 +150,13 @@ export const HomeScreen = () => {
                 if (item.id === 'booking') setActiveTab('booking');
                 else if (item.id === 'customer') setActiveTab('users');
                 else if (item.id === 'overview') setActiveTab('overview');
+                else if (item.id === 'dashboard') setActiveTab('dashboard');
+                else if (item.id === 'courts') setActiveTab('courts');
+                else if (item.id === 'settings') setActiveTab('settings');
             }}
         >
             <View style={styles.imageContainer}>
-                {item.isVector ? (
-                    <View style={styles.vectorIconWrapper}>
-                        <MaterialCommunityIcons name={item.iconName as any} size={80} color={item.accent} />
-                    </View>
-                ) : (
-                    <Image source={item.image} style={styles.launcherImage} resizeMode="contain" />
-                )}
+                <Image source={item.image} style={styles.launcherImage} resizeMode="contain" />
             </View>
             <Text style={styles.launcherLabel}>{item.title}</Text>
         </TouchableOpacity>
@@ -271,7 +285,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     launcherHeader: {
-        marginBottom: 80,
+        marginBottom: 40,
     },
     welcomeText: {
         fontFamily: 'Kanit-Regular',
@@ -286,14 +300,14 @@ const styles = StyleSheet.create({
     },
     launcherGrid: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         flexWrap: 'wrap',
-        gap: 32,
-        paddingHorizontal: 60,
+        gap: 24,
+        paddingHorizontal: 20,
     },
     launcherCard: {
-        width: '22%',
-        aspectRatio: 0.9,
+        width: '30%',
+        aspectRatio: 1,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.7)',
@@ -310,13 +324,14 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         width: '100%',
-        height: '75%',
+        height: '80%',
         alignItems: 'center',
         justifyContent: 'center',
     },
     launcherImage: {
-        width: '70%',
-        height: '70%',
+        width: '90%',
+        height: '90%',
+        borderRadius: 20,
     },
     vectorIconWrapper: {
         width: '100%',
@@ -331,7 +346,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     statusFooter: {
-        marginTop: 100,
+        marginTop: 40,
         alignItems: 'center',
     },
     statusCard: {
