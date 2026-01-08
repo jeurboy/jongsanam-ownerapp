@@ -18,7 +18,7 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/JongCourtOwnerApp-*
 ### ขั้นตอนที่ 2: เปิดโปรเจกต์ใน Xcode
 
 ```bash
-open ios/JongCourtOwnerApp.xcworkspace
+open ios/JongSanamOwnerApp.xcworkspace
 ```
 
 ### ขั้นตอนที่ 3: Configure Signing
@@ -49,78 +49,32 @@ open ios/JongCourtOwnerApp.xcworkspace
 1. ในหน้าต่าง **Organizer** (หรือเปิดด้วย **Window > Organizer**)
 2. เลือก archive ที่เพิ่งสร้าง
 3. คลิก **Distribute App**
-4. เลือก **App Store Connect**
-5. คลิก **Next**
+4. เลือก **App Store Connect** (สำหรับส่งขึ้น Store) หรือ **TestFlight** (สำหรับทดสอบ)
+5. คลิก **Next** ไปเรื่อยๆ
 6. เลือก **Upload**
-7. คลิก **Next**
-8. เลือกตัวเลือกต่างๆ:
-   - ✅ **Automatically manage signing**
-   - ✅ **Upload your app's symbols**
-   - ❌ **Include bitcode** (ไม่จำเป็นแล้ว)
-9. คลิก **Next**
-10. Review และคลิก **Upload**
-11. รอให้อัปโหลดเสร็จ
+7. รอให้กระบวนการเสร็จสิ้น
 
 ### ขั้นตอนที่ 7: Submit ใน App Store Connect
 
 1. เข้า [App Store Connect](https://appstoreconnect.apple.com)
-2. ไปที่ **My Apps**
-3. เลือกแอปของคุณ (หรือสร้างใหม่ถ้ายังไม่มี)
-4. ไปที่แท็บ **TestFlight** หรือ **App Store**
-5. เลือก build ที่เพิ่งอัปโหลด
-6. กรอกข้อมูลที่จำเป็น:
-   - App Name
-   - Description
-   - Screenshots
-   - Keywords
-   - Support URL
-   - Privacy Policy URL
-7. คลิก **Submit for Review**
+2. ไปที่ **My Apps** เลือกแอป **Jong Court Owner**
+3. ไปที่แท็บ **TestFlight** เพื่อดู build ที่เพิ่งอัปโหลด
+4. เมื่อพร้อมขายจริง ให้ไปที่แท็บ **App Store** และเลือก Build นั้นเพื่อ Submit for Review
 
 ---
 
 ## 🔧 วิธีทางเลือก: ใช้ Command Line
 
-### สำหรับ Development Build (ทดสอบบน device)
-
-```bash
-# รันบน device ที่เชื่อมต่ออยู่
-npm run ios -- --device
-```
-
 ### สำหรับ Release Build (ทดสอบ)
 
 ```bash
-# รันแบบ release mode
+# รันแบบ release mode ลงเครื่อง
 npm run ios -- --configuration Release --device
 ```
 
 ---
 
 ## ⚠️ ปัญหาที่พบบ่อยและวิธีแก้
-
-### 1. "Scheme is not configured for archive action"
-
-**วิธีแก้:**
-- ใช้ Xcode แทน command line
-- หรือแก้ไข scheme ใน Xcode:
-  1. Product > Scheme > Edit Scheme
-  2. เลือก Archive
-  3. ตรวจสอบว่า Build Configuration เป็น Release
-
-### 2. "No signing certificate found"
-
-**วิธีแก้:**
-1. เปิด Xcode > Preferences > Accounts
-2. เพิ่ม Apple ID ของคุณ
-3. คลิก **Manage Certificates**
-4. คลิก **+** และเลือก **Apple Distribution**
-
-### 3. "Provisioning profile not found"
-
-**วิธีแก้:**
-- เลือก **Automatically manage signing** ใน Xcode
-- Xcode จะสร้าง provisioning profile ให้อัตโนมัติ
 
 ### 4. Build ช้ามาก
 
@@ -131,40 +85,25 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
 # Clean build folder
 cd ios
-xcodebuild clean -workspace JongCourtOwnerApp.xcworkspace -scheme JongSanamOwnerApp
+xcodebuild clean -workspace JongSanamOwnerApp.xcworkspace -scheme JongSanamOwnerApp
 cd ..
 ```
 
 ---
 
-## 📋 Checklist ก่อน Submit
-
-- [ ] ทดสอบแอปบน device จริง
-- [ ] ตรวจสอบ version และ build number
-- [ ] เตรียม screenshots (ขนาดต่างๆ)
-- [ ] เตรียม app icon (1024x1024)
-- [ ] เขียน description และ keywords
-- [ ] ตรวจสอบ Privacy Policy URL
-- [ ] ตรวจสอบ Support URL
-- [ ] ทดสอบ in-app purchases (ถ้ามี)
-- [ ] ทดสอบ push notifications (ถ้ามี)
-
----
-
 ## 🎯 ข้อมูลสำคัญ
 
-**Team ID:** `XUJH3DUPSU`  
-**Bundle ID:** `com.jongsanam.ownerapp`  
-**App Name:** `Jong Court Owner`  
+**Team ID:** `XUJH3DUPSU`
+**Bundle ID:** `com.jongsanam.ownerapp`
+**App Name:** `Jong Court Owner`
 
 **URLs:**
 - Privacy Policy: `https://jongsanam.online/privacy-policy`
-- Terms of Service: `https://jongsanam.online/terms-of-service`
 - Support: `https://jongsanam.online`
 
 **Contact:**
 - Email: `jeurboy@gmail.com`
-- Phone: `081-8200-0253`
+
 
 ---
 
