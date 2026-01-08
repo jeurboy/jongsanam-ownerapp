@@ -16,24 +16,35 @@ resize() {
 }
 
 # --- iOS Generation ---
+# --- iOS Generation ---
 echo "📱 Generating iOS Icons..."
 mkdir -p "$IOS_DIR"
 
 # 20pt
+resize 20 "$SOURCE" "$IOS_DIR/icon-20.png"
 resize 40 "$SOURCE" "$IOS_DIR/icon-20@2x.png"
 resize 60 "$SOURCE" "$IOS_DIR/icon-20@3x.png"
 
 # 29pt
+resize 29 "$SOURCE" "$IOS_DIR/icon-29.png"
 resize 58 "$SOURCE" "$IOS_DIR/icon-29@2x.png"
 resize 87 "$SOURCE" "$IOS_DIR/icon-29@3x.png"
 
 # 40pt
+resize 40 "$SOURCE" "$IOS_DIR/icon-40.png"
 resize 80 "$SOURCE" "$IOS_DIR/icon-40@2x.png"
 resize 120 "$SOURCE" "$IOS_DIR/icon-40@3x.png"
 
 # 60pt
 resize 120 "$SOURCE" "$IOS_DIR/icon-60@2x.png"
 resize 180 "$SOURCE" "$IOS_DIR/icon-60@3x.png"
+
+# 76pt (iPad)
+resize 76 "$SOURCE" "$IOS_DIR/icon-76.png"
+resize 152 "$SOURCE" "$IOS_DIR/icon-76@2x.png"
+
+# 83.5pt (iPad Pro)
+resize 167 "$SOURCE" "$IOS_DIR/icon-83.5@2x.png"
 
 # 1024pt
 resize 1024 "$SOURCE" "$IOS_DIR/icon-1024.png"
@@ -89,6 +100,60 @@ cat > "$IOS_DIR/Contents.json" <<EOL
       "idiom" : "iphone",
       "filename" : "icon-60@3x.png",
       "scale" : "3x"
+    },
+    {
+      "size" : "20x20",
+      "idiom" : "ipad",
+      "filename" : "icon-20.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "20x20",
+      "idiom" : "ipad",
+      "filename" : "icon-20@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "ipad",
+      "filename" : "icon-29.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "29x29",
+      "idiom" : "ipad",
+      "filename" : "icon-29@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "ipad",
+      "filename" : "icon-40.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "40x40",
+      "idiom" : "ipad",
+      "filename" : "icon-40@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "76x76",
+      "idiom" : "ipad",
+      "filename" : "icon-76.png",
+      "scale" : "1x"
+    },
+    {
+      "size" : "76x76",
+      "idiom" : "ipad",
+      "filename" : "icon-76@2x.png",
+      "scale" : "2x"
+    },
+    {
+      "size" : "83.5x83.5",
+      "idiom" : "ipad",
+      "filename" : "icon-83.5@2x.png",
+      "scale" : "2x"
     },
     {
       "size" : "1024x1024",
