@@ -12,6 +12,7 @@ import {
     Alert,
     useWindowDimensions,
     StatusBar,
+    Linking,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius, fonts } from '../theme/tokens';
@@ -57,6 +58,19 @@ export const LoginScreen = () => {
             );
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleOpenLink = async (url: string) => {
+        try {
+            const supported = await Linking.canOpenURL(url);
+            if (supported) {
+                await Linking.openURL(url);
+            } else {
+                Alert.alert('ไม่สามารถเปิดลิงก์ได้');
+            }
+        } catch (error) {
+            console.error('Error opening link:', error);
         }
     };
 
@@ -149,6 +163,21 @@ export const LoginScreen = () => {
 
                         {/* Footer */}
                         <View style={styles.footer}>
+                            <View style={styles.linksContainer}>
+                                <TouchableOpacity
+                                    onPress={() => handleOpenLink('https://jongsanam.online/terms-of-service')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.linkText}>ข้อกำหนดการใช้งาน</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.linkSeparator}>•</Text>
+                                <TouchableOpacity
+                                    onPress={() => handleOpenLink('https://jongsanam.online/privacy-policy')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.linkText}>นโยบายความเป็นส่วนตัว</Text>
+                                </TouchableOpacity>
+                            </View>
                             <Text style={styles.footerText}>
                                 © 2025 JongSanam. All rights reserved.
                             </Text>
@@ -318,6 +347,24 @@ const styles = StyleSheet.create({
     footer: {
         marginTop: responsive.spacing.lg,
         alignItems: 'center',
+    },
+    linksContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: responsive.spacing.sm,
+        gap: 8,
+    },
+    linkText: {
+        fontSize: responsive.fontSize.xs,
+        fontFamily: fonts.medium,
+        color: colors.primary.main,
+        textDecorationLine: 'underline',
+    },
+    linkSeparator: {
+        fontSize: responsive.fontSize.xs,
+        fontFamily: fonts.regular,
+        color: colors.neutral[400],
+        marginHorizontal: 4,
     },
     footerText: {
         fontSize: responsive.fontSize.xs,

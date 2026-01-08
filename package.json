@@ -9,7 +9,13 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "build:android:release": "ENVFILE=.env.production cd android && ./gradlew assembleRelease && cd ..",
+    "build:android:bundle": "ENVFILE=.env.production cd android && ./gradlew bundleRelease && cd ..",
+    "build:ios:release": "ENVFILE=.env.production react-native run-ios --configuration Release --device",
+    "build:ios:archive": "ENVFILE=.env.production cd ios && xcodebuild -workspace JongSanamOwnerApp.xcworkspace -scheme JongSanamOwnerApp -configuration Release -archivePath ./build/JongSanamOwnerApp.xcarchive archive && cd ..",
+    "build:ios:export": "cd ios && xcodebuild -exportArchive -archivePath ./build/JongSanamOwnerApp.xcarchive -exportPath ./build -exportOptionsPlist exportOptions.plist && cd ..",
+    "build:all": "npm run build:android:release && npm run build:ios:archive && npm run build:ios:export"
   },
   "dependencies": {
     "@expo/metro-config": "^54.0.12",
