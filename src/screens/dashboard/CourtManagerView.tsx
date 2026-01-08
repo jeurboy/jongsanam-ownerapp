@@ -340,6 +340,7 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
                 animationType="fade"
                 transparent
                 onRequestClose={() => setEditModalVisible(false)}
+                supportedOrientations={['portrait', 'landscape']}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>

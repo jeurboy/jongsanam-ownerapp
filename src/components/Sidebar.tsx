@@ -112,14 +112,14 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     menuLabel: {
-        fontFamily: 'Regular',
+        fontFamily: 'Kanit-Regular',
         fontSize: 10,
         color: colors.neutral[600],
         marginTop: 4,
         textAlign: 'center',
     },
     menuLabelActive: {
-        fontFamily: 'SemiBold',
+        fontFamily: 'Kanit-SemiBold',
         color: colors.primary.main,
     },
 });

@@ -1,4 +1,32 @@
 {
-  "name": "JongCourtOwnerApp",
-  "displayName": "JongCourtOwnerApp"
+  "name": "JongSanamOwnerApp",
+  "displayName": "JongSanamOwnerApp",
+  "expo": {
+    "name": "JongSanamOwnerApp",
+    "slug": "jongsanam-owner-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/bootsplash/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "bundleIdentifier": "com.jeurboy.jongsanamownerapp",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.jeurboy.jongsanamownerapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "182b5a87-14fe-466e-80db-0d8dbd493db8"
+      }
+    }
+  }
 }
