@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius, fontSize } from '../theme/tokens';
+import { colors } from '../theme/tokens';
 
 export type SidebarTab = 'overview' | 'dashboard' | 'booking' | 'courts' | 'users' | 'settings';
 
@@ -22,7 +21,6 @@ const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
 ];
 
 export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps) => {
-    const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
     const isPortrait = height > width;
 
@@ -33,7 +31,6 @@ export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps)
         <View style={[
             styles.container,
             {
-                paddingTop: Math.max(insets.top, spacing.lg),
                 width: sidebarWidth
             }
         ]}>

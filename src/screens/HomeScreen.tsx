@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         paddingLeft: 10,
         paddingRight: spacing.lg,
-        paddingTop: 24,
+        paddingTop: 0,
         paddingBottom: 8,
         zIndex: 10,
         borderBottomWidth: 0,

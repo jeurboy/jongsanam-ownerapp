@@ -8,13 +8,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/bootsplash/logo.png",
+      "image": "./assets/bootsplash/splash-v2.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#001529"
     },
     "ios": {
       "bundleIdentifier": "com.jongsanam.ownerapp",
-      "buildNumber": "10",
+      "buildNumber": "14",
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {

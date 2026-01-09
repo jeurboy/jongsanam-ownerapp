@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "android": "expo run:android",
-    "ios": "ENVFILE=.env react-native run-ios --simulator=\"iPad Pro 11-inch (M5)\"",
-    "ios-device": "ENVFILE=.env react-native run-ios --device",
+    "ios:ipad": "ENVFILE=.env react-native run-ios --simulator=\"iPad Pro 11-inch (M5)\"",
+    "ios:iphone": "ENVFILE=.env react-native run-ios --simulator=\"iPhone 17 Pro\"",
+    "ios:device": "ENVFILE=.env react-native run-ios --device",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",

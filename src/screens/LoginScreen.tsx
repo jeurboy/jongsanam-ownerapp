@@ -225,14 +225,14 @@ const styles = StyleSheet.create({
         letterSpacing: -1,
     },
     brandName: {
-        fontSize: responsive.fontSize.xl,
+        fontSize: 20,
         fontFamily: fonts.bold,
         color: colors.white,
         marginBottom: responsive.spacing.xs,
         letterSpacing: 0.5,
     },
     tagline: {
-        fontSize: responsive.fontSize.sm,
+        fontSize: 16,
         fontFamily: fonts.regular,
         color: colors.white,
         textAlign: 'center',
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         height: 48, // Reduced height (was 56)
-        fontSize: 16, // Reduced font size to balance with height
+        fontSize: 14, // Reduced font size to balance with height
         fontFamily: fonts.regular,
         color: colors.neutral[900],
         paddingHorizontal: responsive.spacing.sm,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     loginButtonText: {
-        fontSize: 20, // Significantly larger for visibility
+        fontSize: 18, // Significantly larger for visibility
         fontFamily: fonts.medium, // Bold for better emphasis
         color: colors.white,
         letterSpacing: 0.5,

@@ -16,10 +16,17 @@ import BootSplash from 'react-native-bootsplash';
 import crashlytics from '@react-native-firebase/crashlytics';
 
 import Orientation from 'react-native-orientation-locker';
+import { isTablet } from './src/utils/responsive';
 
 function App() {
   React.useEffect(() => {
-    Orientation.lockToLandscape(); // Force landscape on app start
+    // Only lock to landscape on tablets, allow portrait on phones
+    if (isTablet()) {
+      Orientation.lockToLandscape();
+    } else {
+      Orientation.unlockAllOrientations();
+    }
+
     const init = async () => {
       await crashlytics().setCrashlyticsCollectionEnabled(true);
     };

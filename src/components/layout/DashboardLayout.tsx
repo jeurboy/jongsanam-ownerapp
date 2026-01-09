@@ -1,4 +1,5 @@
-import { View, StyleSheet, Image, SafeAreaView } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sidebar, SidebarTab } from '../Sidebar';
 import { colors } from '../../theme/tokens';
 
@@ -22,12 +23,14 @@ export const DashboardLayout = ({ children, activeTab, onTabChange, isTransparen
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.4)' }]} />
             </View>
 
-            <View style={styles.layoutWrapper}>
-                <Sidebar activeTab={activeTab} onTabChange={onTabChange} isTransparent={isTransparent} />
-                <View style={styles.contentContainer}>
-                    {children}
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <View style={styles.layoutWrapper}>
+                    <Sidebar activeTab={activeTab} onTabChange={onTabChange} isTransparent={isTransparent} />
+                    <View style={styles.contentContainer}>
+                        {children}
+                    </View>
                 </View>
-            </View>
+            </SafeAreaView>
         </View>
     );
 };
@@ -40,6 +43,9 @@ const styles = StyleSheet.create({
     backgroundImage: {
         width: '100%',
         height: '100%',
+    },
+    safeArea: {
+        flex: 1,
     },
     layoutWrapper: {
         flex: 1,
