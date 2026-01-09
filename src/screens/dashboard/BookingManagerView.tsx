@@ -1388,9 +1388,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     activeOpacity={1}
                     onPress={() => setModalVisible(false)}
                 >
-                    <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+                    <View style={[styles.modalContent, windowWidth < 600 && styles.modalContentMobile]} onStartShouldSetResponder={() => true}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>รายละเอียดการจอง</Text>
+                            <Text style={[styles.modalTitle, windowWidth < 600 && { fontSize: 16 }]}>รายละเอียดการจอง</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <MaterialCommunityIcons name="close" size={24} color={colors.neutral[500]} />
                             </TouchableOpacity>
@@ -1399,13 +1399,18 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         {loadingDetail ? (
                             <ActivityIndicator size="large" color={colors.primary.main} style={{ marginVertical: 20 }} />
                         ) : selectedBooking ? (
-                            <View style={styles.modalTwoColumn}>
+                            <ScrollView
+                                showsVerticalScrollIndicator={windowWidth < 600}
+                                bounces={true}
+                            >
+                            <View style={[styles.modalTwoColumn, windowWidth < 600 && styles.modalSingleColumn]}>
                                 {/* Left Column: Details */}
-                                <View style={styles.modalLeftColumn}>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="pound" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                <View style={[styles.modalLeftColumn, windowWidth < 600 && styles.modalLeftColumnMobile]}>
+                                    {/* Booking ID */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="pound" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.detailLabel}>รหัสการจอง</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>รหัสการจอง</Text>
                                             <TouchableOpacity
                                                 onPress={() => {
                                                     if (selectedBooking.id) {
@@ -1415,26 +1420,29 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                 }}
                                             >
                                                 <View style={styles.copyableRow}>
-                                                    <Text style={[styles.detailValueCopyable, { fontSize: 13 }]} numberOfLines={1} ellipsizeMode="middle">
+                                                    <Text style={[styles.detailValueCopyable, { fontSize: windowWidth < 600 ? 12 : 13 }]} numberOfLines={1} ellipsizeMode="middle">
                                                         {selectedBooking.id}
                                                     </Text>
-                                                    <MaterialCommunityIcons name="content-copy" size={14} color={colors.primary.main} />
+                                                    <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 14} color={colors.primary.main} />
                                                 </View>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
 
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="account" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+                                    {/* Customer Name */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="account" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>ลูกค้า</Text>
-                                            <Text style={styles.detailValue}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ลูกค้า</Text>
+                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="phone" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Phone */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="phone" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.detailLabel}>เบอร์โทรศัพท์</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เบอร์โทรศัพท์</Text>
                                             <TouchableOpacity
                                                 onPress={() => {
                                                     const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
@@ -1445,55 +1453,65 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                 }}
                                             >
                                                 <View style={styles.copyableRow}>
-                                                    <Text style={styles.detailValueCopyable}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
-                                                    <MaterialCommunityIcons name="content-copy" size={16} color={colors.primary.main} />
+                                                    <Text style={[styles.detailValueCopyable, windowWidth < 600 && { fontSize: 13 }]}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
+                                                    <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 16} color={colors.primary.main} />
                                                 </View>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="map-marker" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Court */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="map-marker" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>สนาม</Text>
-                                            <Text style={styles.detailValue}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สนาม</Text>
+                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="clock-outline" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Time */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="clock-outline" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>เวลา</Text>
-                                            <Text style={styles.detailValue}>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เวลา</Text>
+                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>
                                                 {format(parseISO(selectedBooking.timeSlotStart), 'd MMM yyyy, HH:mm', { locale: th })} - {format(parseISO(selectedBooking.timeSlotEnd), 'HH:mm')}
                                             </Text>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Price */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="cash" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>ราคา</Text>
-                                            <Text style={styles.detailValue}>{selectedBooking.totalPrice} บาท</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ราคา</Text>
+                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.totalPrice} บาท</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name={selectedBooking.isPaid ? "check-circle-outline" : "alert-circle-outline"} size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Payment Status */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name={selectedBooking.isPaid ? "check-circle-outline" : "alert-circle-outline"} size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>การชำระเงิน</Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.detailValue, { color: selectedBooking.isPaid ? colors.success : colors.warning }]}>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>การชำระเงิน</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile, { color: selectedBooking.isPaid ? colors.success : colors.warning }]}>
                                                     {selectedBooking.isPaid ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
                                                 </Text>
                                                 {selectedBooking.paidAt && (
-                                                    <Text style={{ fontSize: 12, color: colors.neutral[500] }}>
+                                                    <Text style={{ fontSize: windowWidth < 600 ? 10 : 12, color: colors.neutral[500] }}>
                                                         ({format(parseISO(selectedBooking.paidAt), 'd MMM HH:mm', { locale: th })})
                                                     </Text>
                                                 )}
                                             </View>
                                         </View>
                                     </View>
-                                    <View style={styles.detailRow}>
-                                        <MaterialCommunityIcons name="list-status" size={20} color={colors.neutral[500]} style={styles.detailIcon} />
+
+                                    {/* Status */}
+                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                        <MaterialCommunityIcons name="list-status" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
                                         <View>
-                                            <Text style={styles.detailLabel}>สถานะ</Text>
+                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สถานะ</Text>
                                             <View style={[styles.statusBadge, {
                                                 backgroundColor: selectedBooking.status === BookingStatus.CONFIRMED ? '#DCFCE7' :
                                                     selectedBooking.status === BookingStatus.PENDING ? '#FEF9C3' : colors.neutral[100]
@@ -1510,72 +1528,71 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                 </View>
 
                                 {/* Right Column: Action Buttons */}
-                                <View style={styles.modalRightColumn}>
+                                <View style={[styles.modalRightColumn, windowWidth < 600 && styles.modalRightColumnMobile]}>
                                     <TouchableOpacity
-                                        style={styles.editButton}
+                                        style={[styles.editButton, windowWidth < 600 && styles.editButtonMobile]}
                                         onPress={handleEditBooking}
                                     >
-                                        <MaterialCommunityIcons name="pencil" size={20} color={colors.white} />
-                                        <Text style={styles.editButtonText}>แก้ไขการจอง</Text>
+                                        <MaterialCommunityIcons name="pencil" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                        <Text style={[styles.editButtonText, windowWidth < 600 && { fontSize: 13 }]}>แก้ไขการจอง</Text>
                                     </TouchableOpacity>
 
                                     {/* Action Buttons based on Status */}
-                                    <View style={styles.actionButtonsContainer}>
+                                    <View style={[styles.actionButtonsContainer, windowWidth < 600 && styles.actionButtonsContainerMobile]}>
                                         {selectedBooking.status === 'PENDING' && (
                                             <TouchableOpacity
-                                                style={[styles.actionButton, styles.confirmButton]}
+                                                style={[styles.actionButton, styles.confirmButton, windowWidth < 600 && styles.actionButtonMobile]}
                                                 onPress={handleConfirmBooking}
                                             >
-                                                <MaterialCommunityIcons name="check-circle" size={20} color={colors.white} />
-                                                <Text style={styles.actionButtonText}>ยืนยันการจอง</Text>
+                                                <MaterialCommunityIcons name="check-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยืนยันการจอง</Text>
                                             </TouchableOpacity>
                                         )}
 
                                         {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
                                             <>
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, styles.completedButton]}
+                                                    style={[styles.actionButton, styles.completedButton, windowWidth < 600 && styles.actionButtonMobile]}
                                                     onPress={handleMarkCompleted}
                                                 >
-                                                    <MaterialCommunityIcons name="account-check" size={20} color={colors.white} />
-                                                    <Text style={styles.actionButtonText}>ลูกค้ามาใช้บริการแล้ว</Text>
+                                                    <MaterialCommunityIcons name="account-check" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>{windowWidth < 600 ? 'มาใช้บริการ' : 'ลูกค้ามาใช้บริการแล้ว'}</Text>
                                                 </TouchableOpacity>
 
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, styles.noShowButton]}
+                                                    style={[styles.actionButton, styles.noShowButton, windowWidth < 600 && styles.actionButtonMobile]}
                                                     onPress={handleMarkNoShow}
                                                 >
-                                                    <MaterialCommunityIcons name="account-remove" size={20} color={colors.white} />
-                                                    <Text style={styles.actionButtonText}>ไม่มาใช้บริการ (No-Show)</Text>
+                                                    <MaterialCommunityIcons name="account-remove" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>No-Show</Text>
                                                 </TouchableOpacity>
 
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, styles.cancelButtonModal]}
+                                                    style={[styles.actionButton, styles.cancelButtonModal, windowWidth < 600 && styles.actionButtonMobile]}
                                                     onPress={handleCancelBooking}
                                                 >
-                                                    <MaterialCommunityIcons name="close-circle" size={20} color={colors.white} />
-                                                    <Text style={styles.actionButtonText}>ยกเลิกการจอง</Text>
+                                                    <MaterialCommunityIcons name="close-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยกเลิก</Text>
                                                 </TouchableOpacity>
-
-
                                             </>
                                         )}
 
                                         {/* Payment Button - Visible for PENDING, CONFIRMED, COMPLETED */}
                                         {['PENDING', 'CONFIRMED', 'COMPLETED'].includes(selectedBooking.status) && (
                                             <TouchableOpacity
-                                                style={[styles.actionButton, selectedBooking.isPaid ? styles.unpaidButton : styles.paidButton]}
+                                                style={[styles.actionButton, selectedBooking.isPaid ? styles.unpaidButton : styles.paidButton, windowWidth < 600 && styles.actionButtonMobile]}
                                                 onPress={handleTogglePayment}
                                             >
-                                                <MaterialCommunityIcons name={selectedBooking.isPaid ? "cash-refund" : "cash-check"} size={20} color={selectedBooking.isPaid ? colors.neutral[700] : colors.white} />
-                                                <Text style={[styles.actionButtonText, selectedBooking.isPaid && { color: colors.neutral[700] }]}>
-                                                    {selectedBooking.isPaid ? 'ยกเลิกการชำระเงิน' : 'บันทึกการชำระเงิน'}
+                                                <MaterialCommunityIcons name={selectedBooking.isPaid ? "cash-refund" : "cash-check"} size={windowWidth < 600 ? 16 : 20} color={selectedBooking.isPaid ? colors.neutral[700] : colors.white} />
+                                                <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile, selectedBooking.isPaid && { color: colors.neutral[700] }]}>
+                                                    {selectedBooking.isPaid ? (windowWidth < 600 ? 'ยกเลิกชำระ' : 'ยกเลิกการชำระเงิน') : (windowWidth < 600 ? 'ชำระเงิน' : 'บันทึกการชำระเงิน')}
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
                                     </View>
                                 </View>
                             </View>
+                            </ScrollView>
                         ) : null}
                     </View>
                 </TouchableOpacity>
@@ -2255,9 +2272,18 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 8,
     },
+    modalContentMobile: {
+        width: '94%',
+        padding: spacing.md,
+        maxHeight: '90%',
+    },
     modalTwoColumn: {
         flexDirection: 'row',
         gap: spacing.xl,
+    },
+    modalSingleColumn: {
+        flexDirection: 'column',
+        gap: spacing.md,
     },
     modalLeftColumn: {
         flex: 1,
@@ -2265,9 +2291,20 @@ const styles = StyleSheet.create({
         borderRightColor: colors.neutral[100],
         paddingRight: spacing.xl,
     },
+    modalLeftColumnMobile: {
+        borderRightWidth: 0,
+        paddingRight: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.neutral[100],
+        paddingBottom: spacing.md,
+    },
     modalRightColumn: {
         flex: 1,
         paddingLeft: spacing.md,
+    },
+    modalRightColumnMobile: {
+        paddingLeft: 0,
+        paddingTop: spacing.sm,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -2288,10 +2325,17 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: spacing.md,
     },
+    detailRowMobile: {
+        marginBottom: spacing.xs,
+    },
     detailIcon: {
         marginTop: 2,
         marginRight: spacing.md,
         width: 24,
+    },
+    detailIconMobile: {
+        marginRight: spacing.sm,
+        width: 20,
     },
     detailLabel: {
         fontFamily: fonts.regular,
@@ -2299,10 +2343,17 @@ const styles = StyleSheet.create({
         color: colors.neutral[500],
         marginBottom: 2,
     },
+    detailLabelMobile: {
+        fontSize: 11,
+        marginBottom: 0,
+    },
     detailValue: {
         fontFamily: fonts.medium,
         fontSize: 16,
         color: colors.neutral[900],
+    },
+    detailValueMobile: {
+        fontSize: 14,
     },
     copyableRow: {
         flexDirection: 'row',
@@ -2807,6 +2858,12 @@ const styles = StyleSheet.create({
         marginTop: spacing.md,
         gap: spacing.sm,
     },
+    actionButtonsContainerMobile: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: spacing.sm,
+        gap: spacing.xs,
+    },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -2814,6 +2871,12 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: borderRadius.md,
         gap: spacing.xs,
+    },
+    actionButtonMobile: {
+        paddingVertical: 8,
+        paddingHorizontal: spacing.sm,
+        flex: 1,
+        minWidth: '45%',
     },
     confirmButton: {
         backgroundColor: '#22C55E', // Green
@@ -2832,6 +2895,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: colors.white,
     },
+    actionButtonTextMobile: {
+        fontSize: 12,
+    },
     unpaidButton: {
         backgroundColor: colors.neutral[200],
         marginBottom: spacing.sm,
@@ -2839,5 +2905,9 @@ const styles = StyleSheet.create({
     paidButton: {
         backgroundColor: colors.success,
         marginBottom: spacing.sm,
+    },
+    editButtonMobile: {
+        marginTop: 0,
+        paddingVertical: spacing.sm,
     },
 });
