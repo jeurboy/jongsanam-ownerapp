@@ -3,7 +3,7 @@
   "displayName": "JongSanamOwnerApp",
   "expo": {
     "name": "JongSanamOwnerApp",
-    "slug": "jongsanam-owner-app",
+    "slug": "jongsanamownerapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,16 +13,29 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "bundleIdentifier": "com.jeurboy.jongsanamownerapp",
-      "supportsTablet": true
+      "bundleIdentifier": "com.jongsanam.ownerapp",
+      "buildNumber": "10",
+      "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan QR codes and take photos for your sports venue.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to show nearby sports venues and provide accurate venue information.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to show nearby sports venues and provide accurate venue information.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to upload images for your sports venue."
+      }
     },
     "android": {
-      "package": "com.jeurboy.jongsanamownerapp",
+      "package": "com.jongsanam.ownerapp",
+      "versionCode": "1",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       }
     },
+    "plugins": [
+      "./plugins/withFirebaseModularHeaders",
+      "./plugins/withFirebaseAppDelegate"
+    ],
     "extra": {
       "eas": {
         "projectId": "182b5a87-14fe-466e-80db-0d8dbd493db8"

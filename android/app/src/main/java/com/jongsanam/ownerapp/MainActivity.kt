@@ -1,4 +1,4 @@
-package com.jeurboy.jongsanamownerapp
+package com.jongsanam.ownerapp
 
 import android.os.Build
 import android.os.Bundle

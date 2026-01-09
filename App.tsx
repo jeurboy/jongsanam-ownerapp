@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import BootSplash from 'react-native-bootsplash';
+import crashlytics from '@react-native-firebase/crashlytics';
 
 import Orientation from 'react-native-orientation-locker';
 
@@ -20,7 +21,7 @@ function App() {
   React.useEffect(() => {
     Orientation.lockToLandscape(); // Force landscape on app start
     const init = async () => {
-      // …do multiple sync or async tasks
+      await crashlytics().setCrashlyticsCollectionEnabled(true);
     };
 
     init().finally(async () => {
