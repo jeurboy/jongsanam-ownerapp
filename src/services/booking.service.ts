@@ -207,9 +207,18 @@ export const bookingService = {
     /**
      * Lookup booking by QR code
      * @param qrCode - The QR code string (format: JONGSANAM-CHECKIN:{bookingId})
+     * @returns Object containing all bookings for the customer on that date
      */
-    async lookupByQRCode(qrCode: string): Promise<any> {
-        const response = await apiService.get<{ booking: any }>(
+    async lookupByQRCode(qrCode: string): Promise<{
+        scannedBookingId: string;
+        bookings: any[];
+        customer: any;
+    }> {
+        const response = await apiService.get<{
+            scannedBookingId: string;
+            bookings: any[];
+            customer: any;
+        }>(
             `/api/court-owner/booking-lookup?qrCode=${encodeURIComponent(qrCode)}`
         );
 
@@ -223,7 +232,7 @@ export const bookingService = {
         }
 
         // Backend GET returns the booking object directly (wrapped in successResponse's data)
-        return response.data || null;
+        return response.data || { scannedBookingId: '', bookings: [], customer: null };
     },
 
     /**

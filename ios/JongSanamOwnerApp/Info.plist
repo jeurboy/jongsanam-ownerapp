@@ -63,7 +63,7 @@
 	<key>UIRequiresFullScreen</key>
 	<false/>
 	<key>UIStatusBarStyle</key>
-	<string></string>
+	<string/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -78,6 +78,15 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Kanit-Regular.ttf</string>
+		<string>Kanit-Medium.ttf</string>
+		<string>Kanit-SemiBold.ttf</string>
+		<string>Kanit-Bold.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+		<string>MaterialIcons.ttf</string>
+	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 </dict>

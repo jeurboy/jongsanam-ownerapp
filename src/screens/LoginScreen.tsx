@@ -183,7 +183,7 @@ export const LoginScreen = () => {
                             </Text>
                             {require('../config/env').default.env !== 'production' && (
                                 <Text style={[styles.footerText, { marginTop: 8, fontSize: 10 }]}>
-                                    API: {require('../config/env').default.apiUrl}
+                                    {require('../config/env').default.apiUrl}
                                 </Text>
                             )}
                         </View>

@@ -70,9 +70,10 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
     // State
     const [scanned, setScanned] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [bookingResult, setBookingResult] = useState<BookingLookupResult | null>(null);
+    const [bookingResults, setBookingResults] = useState<BookingLookupResult[]>([]);
+    const [customerInfo, setCustomerInfo] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
-    const [checkingIn, setCheckingIn] = useState(false);
+    const [checkingIn, setCheckingIn] = useState<{ [key: string]: boolean }>({});
     const [manualInput, setManualInput] = useState('');
     const [useManualMode, setUseManualMode] = useState(false);
 
@@ -82,7 +83,8 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
             // Orientation is handled globally in AppNavigator
             setIsActive(true);
             setScanned(false);
-            setBookingResult(null);
+            setBookingResults([]);
+            setCustomerInfo(null);
             setError(null);
             setManualInput('');
         } else {
@@ -122,8 +124,9 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         setIsActive(false); // Pause camera processing
 
         try {
-            const booking = await bookingService.lookupByQRCode(qrData);
-            setBookingResult(booking);
+            const result = await bookingService.lookupByQRCode(qrData);
+            setBookingResults(result.bookings || []);
+            setCustomerInfo(result.customer);
         } catch (err: any) {
             if (err.code === 'NOT_YOUR_BUSINESS') {
                 setError('การจองนี้ไม่ได้อยู่ในธุรกิจของคุณ');
@@ -155,8 +158,9 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 qrCode = `JONGSANAM-CHECKIN:${qrCode}`;
             }
 
-            const booking = await bookingService.lookupByQRCode(qrCode);
-            setBookingResult(booking);
+            const result = await bookingService.lookupByQRCode(qrCode);
+            setBookingResults(result.bookings || []);
+            setCustomerInfo(result.customer);
         } catch (err: any) {
             if (err.code === 'NOT_YOUR_BUSINESS') {
                 setError('การจองนี้ไม่ได้อยู่ในธุรกิจของคุณ');
@@ -168,25 +172,30 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         }
     };
 
-    const processStatusUpdate = async (action: 'check-in' | 'confirm') => {
-        if (!bookingResult) return;
-        setCheckingIn(true);
+    const processStatusUpdate = async (bookingId: string, action: 'check-in' | 'confirm') => {
+        setCheckingIn(prev => ({ ...prev, [bookingId]: true }));
         try {
-            await bookingService.updateBookingStatus(bookingResult.id, action);
+            await bookingService.updateBookingStatus(bookingId, action);
             const statusText = action === 'check-in' ? 'ลูกค้ามาใช้บริการแล้ว' : 'ยืนยันสนาม';
+
+            // Update the booking status in the list
+            setBookingResults(prev => prev.map(b =>
+                b.id === bookingId ? { ...b, status: action === 'check-in' ? 'COMPLETED' : 'CONFIRMED' } : b
+            ));
+
             Alert.alert(
                 'บันทึกสำเร็จ! ✓',
-                `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว\nลูกค้า: ${bookingResult.customer?.name || 'ไม่ระบุ'}`,
-                [{ text: 'ตกลง', onPress: () => handleReset() }]
+                `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว`,
+                [{ text: 'ตกลง' }]
             );
         } catch (err: any) {
             Alert.alert('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถทำรายการได้');
         } finally {
-            setCheckingIn(false);
+            setCheckingIn(prev => ({ ...prev, [bookingId]: false }));
         }
     };
 
-    const handleCheckIn = () => {
+    const handleCheckIn = (bookingId: string) => {
         Alert.alert(
             'เลือกสถานะ',
             'กรุณาเลือกสถานะที่ต้องการบันทึก',
@@ -194,19 +203,17 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 { text: 'ยกเลิก', style: 'cancel' },
                 {
                     text: 'ยืนยันสนาม',
-                    onPress: () => processStatusUpdate('confirm')
+                    onPress: () => processStatusUpdate(bookingId, 'confirm')
                 },
                 {
                     text: 'ลูกค้ามาใช้บริการแล้ว',
-                    onPress: () => processStatusUpdate('check-in')
+                    onPress: () => processStatusUpdate(bookingId, 'check-in')
                 }
             ]
         );
     };
 
-    const handleNoShow = async () => {
-        if (!bookingResult) return;
-
+    const handleNoShow = async (bookingId: string) => {
         Alert.alert(
             'ยืนยัน No-Show',
             'คุณต้องการทำเครื่องหมายว่าลูกค้าไม่มาใช่หรือไม่?',
@@ -217,10 +224,12 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await bookingService.markNoShow(bookingResult.id);
-                            Alert.alert('บันทึกแล้ว', 'ทำเครื่องหมาย No-Show เรียบร้อย', [
-                                { text: 'ตกลง', onPress: () => handleReset() }
-                            ]);
+                            await bookingService.markNoShow(bookingId);
+                            // Update the booking status in the list
+                            setBookingResults(prev => prev.map(b =>
+                                b.id === bookingId ? { ...b, status: 'NO_SHOW' } : b
+                            ));
+                            Alert.alert('บันทึกแล้ว', 'ทำเครื่องหมาย No-Show เรียบร้อย');
                         } catch (err: any) {
                             Alert.alert('เกิดข้อผิดพลาด', err.message);
                         }
@@ -232,7 +241,8 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
     const handleReset = () => {
         setScanned(false);
-        setBookingResult(null);
+        setBookingResults([]);
+        setCustomerInfo(null);
         setError(null);
         setManualInput('');
         setIsActive(true); // Create camera active again
@@ -333,7 +343,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 </TouchableOpacity>
             </KeyboardAvoidingView>
 
-            {bookingResult && renderBookingResult()}
+            {bookingResults.length > 0 && renderBookingResult()}
         </SafeAreaView>
     );
 
@@ -441,7 +451,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 </View>
 
                 {error && renderErrorModal()}
-                {bookingResult && renderBookingResult()}
+                {bookingResults.length > 0 && renderBookingResult()}
             </View>
         );
     };
@@ -462,136 +472,159 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         </View>
     );
 
-    const renderBookingResult = () => (
-        <View style={styles.resultOverlay}>
-            <ScrollView style={styles.resultScrollView} contentContainerStyle={styles.resultScrollContent}>
-                <View style={styles.resultCard}>
-                    <View style={[
-                        styles.statusBadge,
-                        { backgroundColor: getStatusColor(bookingResult!.status).bg }
-                    ]}>
-                        <MaterialCommunityIcons
-                            name={bookingResult!.status === 'CONFIRMED' ? 'check-circle' : 'information'}
-                            size={20}
-                            color={getStatusColor(bookingResult!.status).text}
-                        />
-                        <Text style={[
-                            styles.statusText,
-                            { color: getStatusColor(bookingResult!.status).text }
-                        ]}>
-                            {translateBookingStatus(bookingResult!.status)}
-                        </Text>
-                    </View>
+    const renderBookingResult = () => {
+        if (bookingResults.length === 0) return null;
 
-                    <View style={styles.customerSection}>
-                        <View style={styles.customerAvatar}>
-                            <Text style={styles.customerInitial}>
-                                {bookingResult!.customer?.name?.charAt(0).toUpperCase() || '?'}
-                            </Text>
-                        </View>
-                        <View style={styles.customerInfo}>
-                            <Text style={styles.customerName}>
-                                {bookingResult!.customer?.name || 'ไม่ระบุชื่อ'}
-                            </Text>
-                            {bookingResult!.customer?.phone && (
-                                <Text style={styles.customerPhone}>
-                                    {bookingResult!.customer.phone}
-                                </Text>
-                            )}
-                        </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.detailsSection}>
-                        <View style={styles.detailRow}>
-                            <MaterialCommunityIcons name="stadium" size={22} color={colors.neutral[500]} />
-                            <View style={styles.detailContent}>
-                                <Text style={styles.detailLabel}>สนาม</Text>
-                                <Text style={styles.detailValue}>
-                                    {bookingResult!.facility?.name}
-                                </Text>
-                                {bookingResult!.facility?.sportType && (
-                                    <Text style={styles.detailSubValue}>
-                                        {bookingResult!.facility.sportType}
-                                    </Text>
-                                )}
-                            </View>
-                        </View>
-
-                        <View style={styles.detailRow}>
-                            <MaterialCommunityIcons name="calendar" size={22} color={colors.neutral[500]} />
-                            <View style={styles.detailContent}>
-                                <Text style={styles.detailLabel}>วันที่</Text>
-                                <Text style={styles.detailValue}>
-                                    {dateFnsFormat(parseISO(bookingResult!.timeSlotStart), 'd MMMM yyyy', { locale: th })}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailRow}>
-                            <MaterialCommunityIcons name="clock-outline" size={22} color={colors.neutral[500]} />
-                            <View style={styles.detailContent}>
-                                <Text style={styles.detailLabel}>เวลา</Text>
-                                <Text style={styles.detailValue}>
-                                    {dateFnsFormat(parseISO(bookingResult!.timeSlotStart), 'HH:mm')} - {dateFnsFormat(parseISO(bookingResult!.timeSlotEnd), 'HH:mm')}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailRow}>
-                            <MaterialCommunityIcons name="cash" size={22} color={colors.neutral[500]} />
-                            <View style={styles.detailContent}>
-                                <Text style={styles.detailLabel}>ราคา</Text>
-                                <Text style={styles.priceValue}>
-                                    ฿{bookingResult!.totalPrice?.toLocaleString() || '0'}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.actionsSection}>
-                        {bookingResult!.status !== 'COMPLETED' && (
+        return (
+            <View style={styles.resultOverlay}>
+                <ScrollView style={styles.resultScrollView} contentContainerStyle={styles.resultScrollContent}>
+                    <View style={styles.resultCard}>
+                        {/* Customer Header */}
+                        {customerInfo && (
                             <>
-                                <TouchableOpacity
-                                    style={styles.checkInButton}
-                                    onPress={handleCheckIn}
-                                    disabled={checkingIn}
-                                >
-                                    {checkingIn ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <>
-                                            <MaterialCommunityIcons name="check-bold" size={24} color="#FFFFFF" />
-                                            <Text style={styles.checkInButtonText}>Check-in</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.noShowButton} onPress={handleNoShow}>
-                                    <MaterialCommunityIcons name="account-off" size={22} color="#DC2626" />
-                                    <Text style={styles.noShowButtonText}>ไม่มา (No-Show)</Text>
-                                </TouchableOpacity>
+                                <View style={styles.customerSection}>
+                                    <View style={styles.customerAvatar}>
+                                        <Text style={styles.customerInitial}>
+                                            {customerInfo.name?.charAt(0).toUpperCase() || '?'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.customerInfo}>
+                                        <Text style={styles.customerName}>
+                                            {customerInfo.name || 'ไม่ระบุชื่อ'}
+                                        </Text>
+                                        {customerInfo.phone && (
+                                            <Text style={styles.customerPhone}>
+                                                {customerInfo.phone}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+                                <View style={styles.divider} />
                             </>
                         )}
 
-                        {bookingResult!.status === 'COMPLETED' && (
-                            <View style={styles.completedBanner}>
-                                <MaterialCommunityIcons name="check-circle" size={24} color="#16A34A" />
-                                <Text style={styles.completedText}>Check-in เรียบร้อยแล้ว</Text>
-                            </View>
-                        )}
+                        {/* Bookings Count */}
+                        <Text style={styles.bookingsCountText}>
+                            พบ {bookingResults.length} การจอง
+                        </Text>
 
+                        {/* Booking List */}
+                        {bookingResults.map((booking, index) => (
+                            <View key={booking.id} style={styles.bookingCard}>
+                                {/* Status Badge */}
+                                <View style={[
+                                    styles.statusBadge,
+                                    { backgroundColor: getStatusColor(booking.status).bg }
+                                ]}>
+                                    <MaterialCommunityIcons
+                                        name={booking.status === 'CONFIRMED' ? 'check-circle' : 'information'}
+                                        size={18}
+                                        color={getStatusColor(booking.status).text}
+                                    />
+                                    <Text style={[
+                                        styles.statusText,
+                                        { color: getStatusColor(booking.status).text }
+                                    ]}>
+                                        {translateBookingStatus(booking.status)}
+                                    </Text>
+                                </View>
+
+                                {/* Booking Details */}
+                                <View style={styles.bookingDetailsSection}>
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="stadium" size={20} color={colors.neutral[500]} />
+                                        <View style={styles.detailContent}>
+                                            <Text style={styles.detailLabel}>สนาม</Text>
+                                            <Text style={styles.detailValue}>
+                                                {booking.facility?.name}
+                                            </Text>
+                                            {booking.facility?.sportType && (
+                                                <Text style={styles.detailSubValue}>
+                                                    {booking.facility.sportType}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="clock-outline" size={20} color={colors.neutral[500]} />
+                                        <View style={styles.detailContent}>
+                                            <Text style={styles.detailLabel}>เวลา</Text>
+                                            <Text style={styles.detailValue}>
+                                                {dateFnsFormat(parseISO(booking.timeSlotStart), 'HH:mm')} - {dateFnsFormat(parseISO(booking.timeSlotEnd), 'HH:mm')}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="cash" size={20} color={colors.neutral[500]} />
+                                        <View style={styles.detailContent}>
+                                            <Text style={styles.detailLabel}>ราคา</Text>
+                                            <Text style={styles.priceValue}>
+                                                ฿{booking.totalPrice?.toLocaleString() || '0'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Action Buttons */}
+                                <View style={styles.bookingActionsSection}>
+                                    {booking.status !== 'COMPLETED' && booking.status !== 'NO_SHOW' && (
+                                        <>
+                                            <TouchableOpacity
+                                                style={styles.checkInButton}
+                                                onPress={() => handleCheckIn(booking.id)}
+                                                disabled={checkingIn[booking.id]}
+                                            >
+                                                {checkingIn[booking.id] ? (
+                                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                                ) : (
+                                                    <>
+                                                        <MaterialCommunityIcons name="check-bold" size={20} color="#FFFFFF" />
+                                                        <Text style={styles.checkInButtonText}>Check-in</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.noShowButton}
+                                                onPress={() => handleNoShow(booking.id)}
+                                                disabled={checkingIn[booking.id]}
+                                            >
+                                                <MaterialCommunityIcons name="account-off" size={18} color="#DC2626" />
+                                                <Text style={styles.noShowButtonText}>No-Show</Text>
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
+
+                                    {booking.status === 'COMPLETED' && (
+                                        <View style={styles.completedBanner}>
+                                            <MaterialCommunityIcons name="check-circle" size={20} color="#16A34A" />
+                                            <Text style={styles.completedText}>Check-in แล้ว</Text>
+                                        </View>
+                                    )}
+
+                                    {booking.status === 'NO_SHOW' && (
+                                        <View style={styles.noShowBanner}>
+                                            <MaterialCommunityIcons name="account-off" size={20} color="#9333EA" />
+                                            <Text style={styles.noShowBannerText}>No-Show</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {index < bookingResults.length - 1 && <View style={styles.bookingDivider} />}
+                            </View>
+                        ))}
+
+                        {/* Reset Button */}
                         <TouchableOpacity style={styles.scanAgainButton} onPress={handleReset}>
                             <MaterialCommunityIcons name="qrcode-scan" size={20} color={colors.primary[600]} />
                             <Text style={styles.scanAgainButtonText}>ค้นหาใหม่</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </ScrollView>
-        </View>
-    );
+                </ScrollView>
+            </View>
+        );
+    };
 
     return (
         <Modal
@@ -1090,6 +1123,30 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#9333EA',
     },
+    bookingsCountText: {
+        fontFamily: 'Kanit-SemiBold',
+        fontSize: 16,
+        color: colors.neutral[700],
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    bookingCard: {
+        marginBottom: 0,
+    },
+    bookingDetailsSection: {
+        gap: 12,
+        marginTop: 12,
+        marginBottom: 12,
+    },
+    bookingActionsSection: {
+        gap: 10,
+        marginTop: 8,
+    },
+    bookingDivider: {
+        height: 1,
+        backgroundColor: colors.neutral[200],
+        marginVertical: 16,
+    },
     scanAgainButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1098,7 +1155,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         backgroundColor: colors.primary[50],
         borderRadius: 14,
-        marginTop: 4,
+        marginTop: 16,
     },
     scanAgainButtonText: {
         fontFamily: 'Kanit-SemiBold',
