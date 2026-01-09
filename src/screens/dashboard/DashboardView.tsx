@@ -9,7 +9,7 @@ import {
     Dimensions,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, spacing, fontSize, borderRadius } from '../../theme/tokens';
+import { colors, spacing, fontSize, borderRadius, fonts } from '../../theme/tokens';
 import { analyticsService, AnalyticsSummary, AnalyticsByStatus, PeakHour } from '../../services/analytics.service';
 
 interface DashboardViewProps {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     loadingText: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.md,
         color: colors.neutral[500],
     },
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     errorText: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.md,
         color: colors.error,
     },
@@ -342,23 +342,25 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     headerTitle: {
-        fontFamily: 'Kanit-Bold',
+        fontFamily: fonts.semiBold, // Use SemiBold instead of Bold to match menu
         fontSize: 28,
         color: colors.neutral[900],
     },
     headerSubtitle: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.md,
         color: colors.neutral[500],
         marginTop: 2,
     },
     summaryRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap', // Allow wrapping for mobile
         gap: spacing.md,
         marginBottom: spacing.lg,
     },
     summaryCard: {
-        flex: 1,
+        flex: 1, // Still allow growing
+        minWidth: '45%', // Force 2 columns on mobile
         backgroundColor: colors.white,
         borderRadius: borderRadius.xl,
         padding: spacing.lg,
@@ -394,12 +396,12 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     cardLabel: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.sm,
         color: colors.neutral[500],
     },
     cardValue: {
-        fontFamily: 'Kanit-Bold',
+        fontFamily: fonts.bold,
         fontSize: 24,
         color: colors.neutral[900],
         marginTop: 4,
@@ -411,18 +413,20 @@ const styles = StyleSheet.create({
         color: colors.primary.main,
     },
     cardSubValue: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.xs,
         color: colors.neutral[400],
         marginTop: 2,
     },
     secondRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap', // Allow wrapping
         gap: spacing.md,
         marginBottom: spacing.lg,
     },
     statusCard: {
         flex: 1,
+        minWidth: 300, // Stack on small screens
         backgroundColor: colors.white,
         borderRadius: borderRadius.xl,
         padding: spacing.lg,
@@ -433,7 +437,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     sectionTitle: {
-        fontFamily: 'Kanit-SemiBold',
+        fontFamily: fonts.semiBold,
         fontSize: fontSize.lg,
         color: colors.neutral[800],
         marginBottom: spacing.md,
@@ -455,18 +459,19 @@ const styles = StyleSheet.create({
         borderRadius: 5,
     },
     statusLabel: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.sm,
         color: colors.neutral[600],
         flex: 1,
     },
     statusValue: {
-        fontFamily: 'Kanit-SemiBold',
+        fontFamily: fonts.semiBold,
         fontSize: fontSize.md,
         color: colors.neutral[800],
     },
     peakHoursCard: {
         flex: 1,
+        minWidth: 300, // Stack on small screens
         backgroundColor: colors.white,
         borderRadius: borderRadius.xl,
         padding: spacing.lg,
@@ -496,7 +501,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary[100],
     },
     peakRankText: {
-        fontFamily: 'Kanit-SemiBold',
+        fontFamily: fonts.semiBold,
         fontSize: fontSize.sm,
         color: colors.neutral[600],
     },
@@ -507,12 +512,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     peakHourLabel: {
-        fontFamily: 'Kanit-Medium',
+        fontFamily: fonts.medium,
         fontSize: fontSize.md,
         color: colors.neutral[800],
     },
     peakHourCount: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.xs,
         color: colors.neutral[500],
     },
@@ -534,7 +539,7 @@ const styles = StyleSheet.create({
         gap: spacing.sm,
     },
     emptyText: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.sm,
         color: colors.neutral[400],
     },
@@ -555,12 +560,12 @@ const styles = StyleSheet.create({
         gap: spacing.xs,
     },
     quickStatLabel: {
-        fontFamily: 'Kanit-Regular',
+        fontFamily: fonts.regular,
         fontSize: fontSize.sm,
         color: colors.neutral[500],
     },
     quickStatValue: {
-        fontFamily: 'Kanit-Bold',
+        fontFamily: fonts.bold,
         fontSize: fontSize.xl,
         color: colors.neutral[800],
     },

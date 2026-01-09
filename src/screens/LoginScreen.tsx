@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: responsive.spacing.md,
+        marginTop: 14,
         shadowColor: colors.primary.main,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -329,13 +329,13 @@ const styles = StyleSheet.create({
 
     // Footer
     footer: {
-        marginTop: responsive.spacing.lg,
+        marginTop: 24,
         alignItems: 'center',
     },
     linksContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: responsive.spacing.sm,
+        marginBottom: 14,
         gap: 8,
     },
     linkText: {

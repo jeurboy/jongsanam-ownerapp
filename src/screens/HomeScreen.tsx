@@ -302,17 +302,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         flexWrap: 'wrap',
-        gap: 24,
-        paddingHorizontal: 20,
+        gap: 16, // Reduced gap
+        paddingHorizontal: 10, // Reduced padding
     },
     launcherCard: {
-        width: '30%',
-        aspectRatio: 1,
+        width: '45%', // Change to 2 columns for mobile portrait
+        aspectRatio: 1.1, // Slightly taller
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: 24,
-        padding: 16,
+        borderRadius: 20,
+        padding: 12,
         // Soft Claymorphism shadow
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
@@ -324,14 +324,14 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         width: '100%',
-        height: '80%',
+        height: '65%', // Reduced height from 80% to give text space
         alignItems: 'center',
         justifyContent: 'center',
     },
     launcherImage: {
-        width: '90%',
-        height: '90%',
-        borderRadius: 20,
+        width: '70%', // Reduced image size
+        height: '70%',
+        borderRadius: 16,
     },
     vectorIconWrapper: {
         width: '100%',
@@ -341,9 +341,10 @@ const styles = StyleSheet.create({
     },
     launcherLabel: {
         fontFamily: 'Kanit-SemiBold',
-        fontSize: 16,
+        fontSize: 16, // Keep readable size
         color: colors.neutral[700],
         marginTop: 8,
+        textAlign: 'center',
     },
     statusFooter: {
         marginTop: 40,

@@ -89,7 +89,6 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
     const loadCourts = useCallback(async () => {
         try {
             setLoading(true);
-            // Fetch courts
             // Fetch courts and facilities
             const [courtsData, facilitiesData] = await Promise.all([
                 courtService.getAllOwnerCourts(),
@@ -249,10 +248,7 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerTopRow}>
-                    <View>
-                        <Text style={styles.headerTitle}>จัดการสนาม</Text>
-                        <Text style={styles.headerSubtitle}>ตั้งค่าเวลาเปิด-ปิด และราคา ({filteredCourts.length} สนาม)</Text>
-                    </View>
+                    <Text style={styles.headerTitle}>จัดการสนาม</Text>
                     <View style={styles.toggleContainer}>
                         <TouchableOpacity
                             style={[
@@ -288,9 +284,8 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
                         </TouchableOpacity>
                     </View>
                 </View>
+                <Text style={styles.headerSubtitle}>ตั้งค่าเวลาเปิด-ปิด และราคา ({filteredCourts.length} สนาม)</Text>
             </View>
-
-
 
             {/* Loading / List */}
             {loading ? (
@@ -318,8 +313,7 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
                 />
             )}
 
-            {/* Sport Filter Tabs - Sticky Bottom - Reused Component */}
-            {/* Sport Filter Tabs - Sticky Bottom - Reused Component */}
+            {/* Sport Filter Tabs - Sticky Bottom */}
             <SportFilterTabs
                 sports={['ALL', ...availableSports].filter(sport => {
                     if (sport === 'ALL') return true;
@@ -334,6 +328,7 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
                 selectedSport={selectedSport}
                 onSelectSport={setSelectedSport}
             />
+
             {/* Edit Modal */}
             <Modal
                 visible={editModalVisible}
