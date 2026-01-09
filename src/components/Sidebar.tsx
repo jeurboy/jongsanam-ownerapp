@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, fontSize } from '../theme/tokens';
@@ -23,15 +23,23 @@ const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
 
 export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps) => {
     const insets = useSafeAreaInsets();
+    const { width, height } = useWindowDimensions();
+    const isPortrait = height > width;
+
+    // Reduce width in portrait mode
+    const sidebarWidth = isPortrait ? 80 : 100;
 
     return (
         <View style={[
             styles.container,
-            { paddingTop: Math.max(insets.top, spacing.lg) }
+            {
+                paddingTop: Math.max(insets.top, spacing.lg),
+                width: sidebarWidth
+            }
         ]}>
             <Image
                 source={require('../assets/jongsanam_logo_light.png')}
-                style={styles.logo}
+                style={[styles.logo, { width: sidebarWidth - 20, height: sidebarWidth - 20 }]}
                 resizeMode="contain"
             />
             <View style={styles.glassNav}>
@@ -49,12 +57,13 @@ export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps)
                         >
                             <MaterialCommunityIcons
                                 name={isActive ? item.icon.replace('-outline', '') : (item.icon.includes('-outline') ? item.icon : `${item.icon}`)}
-                                size={28}
+                                size={isPortrait ? 24 : 28}
                                 color={isActive ? colors.primary.main : colors.neutral[400]}
                             />
                             <Text style={[
                                 styles.menuLabel,
-                                isActive && styles.menuLabelActive
+                                isActive && styles.menuLabelActive,
+                                { fontSize: isPortrait ? 9 : 10 }
                             ]}>
                                 {item.label}
                             </Text>
@@ -82,9 +91,9 @@ const styles = StyleSheet.create({
     glassNav: {
         width: '100%',
         backgroundColor: 'rgba(255, 255, 255, 0.45)', // Even more transparent
-        borderRadius: 28,
-        paddingVertical: 15,
-        gap: 12,
+        borderRadius: 18, // Reduced radius
+        paddingVertical: 10, // Reduced padding
+        gap: 8, // Reduced gap
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.3)',
         marginTop: 10,
@@ -96,12 +105,13 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     menuItem: {
-        width: '88%',
-        paddingVertical: 12,
-        borderRadius: 20,
+        width: '80%', // Slightly reduce width to fit nicely
+        aspectRatio: 1, // Force square shape
+        borderRadius: 14, // Less rounded for square look
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
+        // paddingVertical is removed because aspectRatio handles height
     },
     menuItemActive: {
         backgroundColor: colors.white,
@@ -115,7 +125,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Kanit-Regular',
         fontSize: 10,
         color: colors.neutral[600],
-        marginTop: 4,
+        marginTop: 2, // Reduce margin to fit in square
         textAlign: 'center',
     },
     menuLabelActive: {
