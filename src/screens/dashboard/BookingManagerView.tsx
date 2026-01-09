@@ -1381,7 +1381,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                 transparent={true}
                 animationType="fade"
                 onRequestClose={() => setModalVisible(false)}
-                supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+                supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
             >
                 <TouchableOpacity
                     style={styles.modalOverlay}
@@ -1604,7 +1604,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                 transparent={false}
                 animationType="slide"
                 onRequestClose={() => setAddModalVisible(false)}
-                supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+                supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
             >
                 <View style={styles.addModalContent}>
                     <View style={styles.addModalHeader}>
