@@ -25,23 +25,6 @@ export const LoginScreen = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { width, height } = useWindowDimensions();
 
-    // Calculate responsive values based on screen size
-    const isSmallScreen = width < 768;
-    const isMediumScreen = width >= 768 && width < 1024;
-    const isLargeScreen = width >= 1024;
-
-    const getSpacing = (value: number) => {
-        if (isSmallScreen) return value * 0.8;
-        if (isMediumScreen) return value;
-        return value * 1.2;
-    };
-
-    const getFontSize = (value: number) => {
-        if (isSmallScreen) return value * 0.9;
-        if (isMediumScreen) return value;
-        return value * 1.1;
-    };
-
     const handleLogin = async () => {
         if (!username || !password) {
             Alert.alert('ข้อผิดพลาด', 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
@@ -79,7 +62,13 @@ export const LoginScreen = () => {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            <StatusBar hidden={true} showHideTransition="fade" backgroundColor="transparent" translucent={true} barStyle="light-content" />
+            <StatusBar
+                hidden={true}
+                showHideTransition="fade"
+                backgroundColor="transparent"
+                translucent={true}
+                barStyle="light-content"
+            />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
@@ -99,7 +88,6 @@ export const LoginScreen = () => {
                     <View style={styles.formSection}>
                         {/* Header */}
                         <View style={styles.header}>
-                            <Text style={styles.welcomeText}>ยินดีต้อนรับ</Text>
                             <Text style={styles.subtitle}>เข้าสู่ระบบเพื่อจัดการสนามของคุณ</Text>
                         </View>
 
@@ -203,11 +191,11 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 0,
+        padding: 24, // Optimized padding for mobile
     },
     centerContainer: {
         width: '100%',
-        maxWidth: 500,
+        maxWidth: 420, // Optimized max-width for mobile
         alignItems: 'center',
     },
 
@@ -217,10 +205,10 @@ const styles = StyleSheet.create({
         marginBottom: responsive.spacing.xl,
     },
     logo: {
-        width: 80,
-        height: 80,
+        width: 100, // Increased size
+        height: 100, // Increased size
         backgroundColor: colors.white,
-        borderRadius: 16,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: responsive.spacing.md,
@@ -231,7 +219,7 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     logoText: {
-        fontSize: 36,
+        fontSize: 52, // Increased size
         fontFamily: fonts.bold,
         color: colors.primary.main,
         letterSpacing: -1,
@@ -255,8 +243,8 @@ const styles = StyleSheet.create({
     formSection: {
         width: '100%',
         backgroundColor: colors.white,
-        borderRadius: 16,
-        padding: responsive.spacing.xl,
+        borderRadius: 24,
+        padding: 24,
         shadowColor: colors.black,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
@@ -264,18 +252,11 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     header: {
-        marginBottom: responsive.spacing.lg,
+        marginBottom: 24,
         alignItems: 'center',
     },
-    welcomeText: {
-        fontSize: responsive.fontSize.xl,
-        fontFamily: fonts.bold,
-        color: colors.neutral[900],
-        marginBottom: responsive.spacing.xs,
-        letterSpacing: -0.5,
-    },
     subtitle: {
-        fontSize: responsive.fontSize.sm,
+        fontSize: 14,
         fontFamily: fonts.regular,
         color: colors.neutral[500],
         textAlign: 'center',
@@ -287,9 +268,10 @@ const styles = StyleSheet.create({
     },
     inputGroup: {
         marginBottom: responsive.spacing.lg,
+        marginHorizontal: responsive.spacing.md,
     },
     label: {
-        fontSize: responsive.fontSize.sm,
+        fontSize: 16, // Manually increased based on feedback
         fontFamily: fonts.medium,
         color: colors.neutral[700],
         marginBottom: responsive.spacing.sm,
@@ -301,31 +283,31 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[50],
         borderWidth: 1.5,
         borderColor: colors.neutral[200],
-        borderRadius: 10,
+        borderRadius: 12,
         overflow: 'hidden',
     },
     iconContainer: {
-        width: 40,
-        height: 44,
+        width: 44,
+        height: 48, // Reduced height (was 56)
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.neutral[100],
     },
     inputIcon: {
-        fontSize: 18,
+        fontSize: 20,
     },
     input: {
         flex: 1,
-        height: 44,
-        fontSize: responsive.fontSize.md,
+        height: 48, // Reduced height (was 56)
+        fontSize: 16, // Reduced font size to balance with height
         fontFamily: fonts.regular,
         color: colors.neutral[900],
-        paddingHorizontal: responsive.spacing.md,
+        paddingHorizontal: responsive.spacing.sm,
     },
     loginButton: {
         backgroundColor: colors.primary.main,
-        height: 44,
-        borderRadius: 10,
+        height: 50, // Taller button
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: responsive.spacing.md,
@@ -339,10 +321,10 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     loginButtonText: {
-        fontSize: responsive.fontSize.md,
-        fontFamily: fonts.medium,
+        fontSize: 20, // Significantly larger for visibility
+        fontFamily: fonts.medium, // Bold for better emphasis
         color: colors.white,
-        letterSpacing: 0.3,
+        letterSpacing: 0.5,
     },
 
     // Footer
@@ -357,19 +339,19 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     linkText: {
-        fontSize: responsive.fontSize.xs,
+        fontSize: 14, // Increased from xs
         fontFamily: fonts.medium,
         color: colors.primary.main,
         textDecorationLine: 'underline',
     },
     linkSeparator: {
-        fontSize: responsive.fontSize.xs,
+        fontSize: 14,
         fontFamily: fonts.regular,
         color: colors.neutral[400],
         marginHorizontal: 4,
     },
     footerText: {
-        fontSize: responsive.fontSize.xs,
+        fontSize: 12, // Increased slightly
         fontFamily: fonts.regular,
         color: colors.neutral[400],
     },
