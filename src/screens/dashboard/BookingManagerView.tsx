@@ -11,6 +11,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { format, parseISO, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { translateBookingStatus } from '../../utils/statusTranslation';
+import { mergeConsecutiveBookings } from '../../utils/bookingUtils';
+import { BookingLookupResult } from '../../types/booking';
 
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
@@ -258,53 +260,61 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
         return slots;
     }, []);
 
-    // Merge consecutive bookings from same customer (phone number) for the same court
+    // Merge consecutive bookings using same logic as QR Scanner (Shared Utility)
     const getMergedBookingsForCourt = (courtId: string) => {
-        const courtBookings = bookings
-            .filter(b => {
-                // Must match the court ID
-                if ((b.court?.id || b.courtId) !== courtId) return false;
-                // Exclude capacity bookings - they should only show in capacity view
-                if ((b as any).isCapacity === true) return false;
-                if ((b as any).isCapacity === true) return false;
-                // Show all statuses as requested
-                return true;
-            })
-            .sort((a, b) => new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime());
+        // 1. Filter raw bookings for this court
+        const courtBookings = bookings.filter(b => {
+            if ((b.court?.id || b.courtId) !== courtId) return false;
+            if ((b as any).isCapacity === true) return false;
+            return true;
+        });
 
-        const merged: MergedBooking[] = [];
-
-        for (const booking of courtBookings) {
-            const phone = booking.serviceUser?.phone || '';
-            const lastMerged = merged[merged.length - 1];
-
-            // Check if this booking can be merged with the last one
-            // Must have same phone, same status, and consecutive times
-            if (lastMerged &&
-                lastMerged.customerPhone === phone &&
-                lastMerged.status === booking.status &&
-                phone !== '' &&
-                new Date(lastMerged.timeSlotEnd).getTime() === new Date(booking.timeSlotStart).getTime()) {
-                // Merge: extend the end time
-                lastMerged.timeSlotEnd = booking.timeSlotEnd;
-                lastMerged.ids.push(booking.id);
-                lastMerged.bookings.push(booking);
-            } else {
-                // Start new merged group
-                merged.push({
-                    id: booking.id,
-                    ids: [booking.id],
-                    customerName: booking.serviceUser?.name || '-',
-                    customerPhone: phone,
-                    timeSlotStart: booking.timeSlotStart,
-                    timeSlotEnd: booking.timeSlotEnd,
-                    status: booking.status,
-                    bookings: [booking],
-                });
+        // 2. Map to BookingLookupResult (structure required by mergeConsecutiveBookings)
+        const mappedForUtil: BookingLookupResult[] = courtBookings.map(b => ({
+            id: b.id,
+            status: b.status,
+            timeSlotStart: b.timeSlotStart,
+            timeSlotEnd: b.timeSlotEnd,
+            totalPrice: Number(b.totalPrice || 0),
+            createdAt: b.createdAt || new Date().toISOString(),
+            confirmedAt: b.confirmedAt || null,
+            notes: b.notes || null,
+            isPaid: b.isPaid,
+            customer: {
+                id: b.serviceUserId || 'guest',
+                name: b.serviceUser?.name || b.customerName || 'Guest',
+                phone: b.serviceUser?.phone || b.customerPhone || '',
+                email: b.serviceUser?.email || null
+            },
+            facility: {
+                type: 'court',
+                id: courtId,
+                name: b.court?.name || 'Court',
             }
-        }
+        }));
 
-        return merged;
+        // 3. EXECUTE MERGE (Reuse Logic from QR Scanner)
+        // This handles sort, 5-min tolerance, status ignoring, price summing
+        const mergedResults = mergeConsecutiveBookings(mappedForUtil);
+
+        // 4. Map back to MergedBooking format for UI
+        return mergedResults.map(res => {
+            const mergedIds = res.mergedBookingIds || [res.id];
+
+            // Re-find original booking objects (needed for UI details)
+            const originalBookings = courtBookings.filter(b => mergedIds.includes(b.id));
+
+            return {
+                id: res.id,
+                ids: mergedIds,
+                customerName: res.customer?.name || '-',
+                customerPhone: res.customer?.phone || '',
+                timeSlotStart: res.timeSlotStart,
+                timeSlotEnd: res.timeSlotEnd,
+                status: res.status, // Uses status of the first/head booking
+                bookings: originalBookings
+            };
+        });
     };
 
 

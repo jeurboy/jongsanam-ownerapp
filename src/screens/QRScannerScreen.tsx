@@ -27,30 +27,8 @@ import { bookingService } from '../services/booking.service';
 import { format as dateFnsFormat, parseISO } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { translateBookingStatus } from '../utils/statusTranslation';
-
-interface BookingLookupResult {
-    id: string;
-    status: string;
-    timeSlotStart: string;
-    timeSlotEnd: string;
-    totalPrice: number;
-    createdAt: string;
-    confirmedAt?: string;
-    notes?: string;
-    customer?: {
-        id: string;
-        name: string;
-        phone: string;
-        email?: string;
-    };
-    facility?: {
-        type: 'court' | 'capacity';
-        id: string;
-        name: string;
-        sportType?: string;
-        businessName?: string;
-    };
-}
+import { BookingLookupResult } from '../types/booking';
+import { mergeConsecutiveBookings } from '../utils/bookingUtils';
 
 interface Props {
     visible: boolean;
@@ -110,10 +88,9 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
         // Validate QR format
         if (!qrData.startsWith('JONGSANAM-CHECKIN:')) {
-            // Only show error if we haven't scanned yet to avoid flickering
             if (!scanned) {
                 setError('QR Code นี้ไม่ใช่รหัสยืนยันการจอง');
-                setScanned(true); // Stop scanning momentarily
+                setScanned(true);
             }
             return;
         }
@@ -121,11 +98,68 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         setScanned(true);
         setLoading(true);
         setError(null);
-        setIsActive(false); // Pause camera processing
+        setIsActive(false);
 
         try {
             const result = await bookingService.lookupByQRCode(qrData);
-            setBookingResults(result.bookings || []);
+
+            // Normalize bookings with strict manual construction
+            const normalizedBookings: BookingLookupResult[] = (result.bookings || []).map((b: any) => {
+                const normalized = {
+                    id: b.id,
+                    status: (b.status || 'PENDING').toUpperCase(),
+                    timeSlotStart: b.timeSlotStart,
+                    timeSlotEnd: b.timeSlotEnd,
+                    totalPrice: Number(b.totalPrice || 0),
+                    createdAt: b.createdAt || new Date().toISOString(),
+                    confirmedAt: b.confirmedAt,
+                    notes: b.notes,
+                    isPaid: b.isPaid,
+
+                    // Manually construct customer (don't trust raw object structure)
+                    customer: {
+                        id: b.serviceUserId || b.customer?.id || result.customer?.id || 'guest',
+                        name: b.serviceUser?.name || b.customer?.name || b.customerName || result.customer?.name || 'Guest',
+                        phone: b.serviceUser?.phone || b.customer?.phone || b.customerPhone || result.customer?.phone || '',
+                        email: b.serviceUser?.email || b.customer?.email || result.customer?.email || null
+                    },
+
+                    // Manually construct facility (ensure ID is robust)
+                    facility: {
+                        type: 'court' as const,
+                        id: String(b.courtId || b.court?.id || b.facility?.id || 'unknown').trim(),
+                        name: b.court?.name || b.facility?.name || 'Unknown Court',
+                    }
+                };
+                return normalized;
+            });
+
+            console.log('Normalized Bookings for Merge:', JSON.stringify(normalizedBookings.map(b => ({
+                id: b.id,
+                time: `${b.timeSlotStart}-${b.timeSlotEnd}`,
+                fac: b.facility?.id,
+                status: b.status,
+                phone: b.customer?.phone
+            })), null, 2));
+
+            const mergedBookings = mergeConsecutiveBookings(normalizedBookings);
+
+            const targetBookingId = result.scannedBookingId;
+            let displayBookings = mergedBookings;
+
+            // Strict filtering
+            if (targetBookingId) {
+                const matchedGroup = mergedBookings.find(b =>
+                    b.id === targetBookingId ||
+                    ((b as any).mergedBookingIds && (b as any).mergedBookingIds.includes(targetBookingId))
+                );
+
+                if (matchedGroup) {
+                    displayBookings = [matchedGroup];
+                }
+            }
+
+            setBookingResults(displayBookings);
             setCustomerInfo(result.customer);
         } catch (err: any) {
             if (err.code === 'NOT_YOUR_BUSINESS') {
@@ -159,7 +193,42 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
             }
 
             const result = await bookingService.lookupByQRCode(qrCode);
-            setBookingResults(result.bookings || []);
+
+            // Normalize bookings with strict manual construction (same as onCodeScanned)
+            const normalizedBookings: BookingLookupResult[] = (result.bookings || []).map((b: any) => {
+                const normalized = {
+                    id: b.id,
+                    status: (b.status || 'PENDING').toUpperCase(),
+                    timeSlotStart: b.timeSlotStart,
+                    timeSlotEnd: b.timeSlotEnd,
+                    totalPrice: Number(b.totalPrice || 0),
+                    createdAt: b.createdAt || new Date().toISOString(),
+                    confirmedAt: b.confirmedAt,
+                    notes: b.notes,
+                    isPaid: b.isPaid,
+
+                    // Manually construct customer
+                    customer: {
+                        id: b.serviceUserId || b.customer?.id || result.customer?.id || 'guest',
+                        name: b.serviceUser?.name || b.customer?.name || b.customerName || result.customer?.name || 'Guest',
+                        phone: b.serviceUser?.phone || b.customer?.phone || b.customerPhone || result.customer?.phone || '',
+                        email: b.serviceUser?.email || b.customer?.email || result.customer?.email || null
+                    },
+
+                    // Manually construct facility
+                    facility: {
+                        type: 'court' as const,
+                        id: String(b.courtId || b.court?.id || b.facility?.id || 'unknown').trim(),
+                        name: b.court?.name || b.facility?.name || 'Unknown Court',
+                    }
+                };
+                return normalized;
+            });
+
+            // Merge consecutive bookings
+            const mergedBookings = mergeConsecutiveBookings(normalizedBookings);
+
+            setBookingResults(mergedBookings);
             setCustomerInfo(result.customer);
         } catch (err: any) {
             if (err.code === 'NOT_YOUR_BUSINESS') {
@@ -172,10 +241,13 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         }
     };
 
-    const processStatusUpdate = async (bookingId: string, action: 'check-in' | 'confirm') => {
+    const processStatusUpdate = async (bookingId: string, action: 'check-in' | 'confirm', allBookingIds: string[], showAlert = true) => {
         setCheckingIn(prev => ({ ...prev, [bookingId]: true }));
         try {
-            await bookingService.updateBookingStatus(bookingId, action);
+            // Update all booking IDs (for merged bookings)
+            for (const id of allBookingIds) {
+                await bookingService.updateBookingStatus(id, action);
+            }
             const statusText = action === 'check-in' ? 'ลูกค้ามาใช้บริการแล้ว' : 'ยืนยันสนาม';
 
             // Update the booking status in the list
@@ -183,11 +255,13 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 b.id === bookingId ? { ...b, status: action === 'check-in' ? 'COMPLETED' : 'CONFIRMED' } : b
             ));
 
-            Alert.alert(
-                'บันทึกสำเร็จ! ✓',
-                `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว`,
-                [{ text: 'ตกลง' }]
-            );
+            if (showAlert) {
+                Alert.alert(
+                    'บันทึกสำเร็จ!',
+                    `เปลี่ยนสถานะเป็น "${statusText}" เรียบร้อยแล้ว`,
+                    [{ text: 'ตกลง' }]
+                );
+            }
         } catch (err: any) {
             Alert.alert('เกิดข้อผิดพลาด', err.message || 'ไม่สามารถทำรายการได้');
         } finally {
@@ -196,27 +270,41 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
     };
 
     const handleCheckIn = (bookingId: string) => {
+        // Find the booking to get merged IDs if any
+        const booking = bookingResults.find(b => b.id === bookingId);
+        const allBookingIds = (booking as any)?.mergedBookingIds || [bookingId];
+        const bookingCount = allBookingIds.length;
+
+        const countText = bookingCount > 1 ? ` (${bookingCount} รายการ)` : '';
+
         Alert.alert(
             'เลือกสถานะ',
-            'กรุณาเลือกสถานะที่ต้องการบันทึก',
+            `กรุณาเลือกสถานะที่ต้องการบันทึก${countText}`,
             [
                 { text: 'ยกเลิก', style: 'cancel' },
                 {
                     text: 'ยืนยันสนาม',
-                    onPress: () => processStatusUpdate(bookingId, 'confirm')
+                    onPress: () => processStatusUpdate(bookingId, 'confirm', allBookingIds)
                 },
                 {
                     text: 'ลูกค้ามาใช้บริการแล้ว',
-                    onPress: () => processStatusUpdate(bookingId, 'check-in')
+                    onPress: () => processStatusUpdate(bookingId, 'check-in', allBookingIds)
                 }
             ]
         );
     };
 
     const handleNoShow = async (bookingId: string) => {
+        // Find the booking to get merged IDs if any
+        const booking = bookingResults.find(b => b.id === bookingId);
+        const allBookingIds = (booking as any)?.mergedBookingIds || [bookingId];
+        const bookingCount = allBookingIds.length;
+
+        const countText = bookingCount > 1 ? ` ${bookingCount} รายการ` : '';
+
         Alert.alert(
             'ยืนยัน No-Show',
-            'คุณต้องการทำเครื่องหมายว่าลูกค้าไม่มาใช่หรือไม่?',
+            `คุณต้องการทำเครื่องหมายว่าลูกค้าไม่มา${countText}ใช่หรือไม่?`,
             [
                 { text: 'ยกเลิก', style: 'cancel' },
                 {
@@ -224,12 +312,15 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await bookingService.markNoShow(bookingId);
+                            // Mark all bookings as no-show
+                            for (const id of allBookingIds) {
+                                await bookingService.markNoShow(id);
+                            }
                             // Update the booking status in the list
                             setBookingResults(prev => prev.map(b =>
                                 b.id === bookingId ? { ...b, status: 'NO_SHOW' } : b
                             ));
-                            Alert.alert('บันทึกแล้ว', 'ทำเครื่องหมาย No-Show เรียบร้อย');
+                            Alert.alert('บันทึกแล้ว', `ทำเครื่องหมาย No-Show${countText} เรียบร้อย`);
                         } catch (err: any) {
                             Alert.alert('เกิดข้อผิดพลาด', err.message);
                         }
@@ -237,6 +328,151 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                 }
             ]
         );
+    };
+
+    const handleCancelBooking = async (bookingId: string) => {
+        // Find the booking to get merged IDs if any
+        const booking = bookingResults.find(b => b.id === bookingId);
+        const bookingIds = (booking as any)?.mergedBookingIds || [bookingId];
+        const bookingCount = bookingIds.length;
+
+        Alert.alert(
+            'ยืนยันยกเลิกการจอง',
+            bookingCount > 1
+                ? `คุณต้องการยกเลิก ${bookingCount} การจองนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`
+                : 'คุณต้องการยกเลิกการจองนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้',
+            [
+                { text: 'ไม่ยกเลิก', style: 'cancel' },
+                {
+                    text: 'ยกเลิกการจอง',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Cancel all bookings (including merged ones)
+                            for (const id of bookingIds) {
+                                await bookingService.cancelBooking(id, 'ยกเลิกโดยเจ้าของสนาม');
+                            }
+                            // Update the booking status in the list
+                            setBookingResults(prev => prev.map(b =>
+                                b.id === bookingId ? { ...b, status: 'CANCELLED' } : b
+                            ));
+                            Alert.alert('ยกเลิกแล้ว', 'ยกเลิกการจองเรียบร้อยแล้ว');
+                        } catch (err: any) {
+                            Alert.alert('เกิดข้อผิดพลาด', err.message);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleCheckInAll = async () => {
+        const pendingBookings = bookingResults.filter(b => b.status !== 'COMPLETED' && b.status !== 'NO_SHOW' && b.status !== 'CANCELLED');
+
+        if (pendingBookings.length === 0) return;
+
+        // Count total individual bookings (including merged)
+        const totalIndividualBookings = pendingBookings.reduce((sum, b) => {
+            const ids = (b as any).mergedBookingIds || [b.id];
+            return sum + ids.length;
+        }, 0);
+
+        Alert.alert(
+            'ยืนยัน Check-in ทั้งหมด',
+            `คุณต้องการ Check-in ${totalIndividualBookings} รายการใช่หรือไม่?`,
+            [
+                { text: 'ยกเลิก', style: 'cancel' },
+                {
+                    text: 'ยืนยัน',
+                    onPress: async () => {
+                        try {
+                            // Check-in all pending bookings (including merged ones)
+                            for (const booking of pendingBookings) {
+                                const bookingIds = (booking as any).mergedBookingIds || [booking.id];
+                                await processStatusUpdate(booking.id, 'check-in', bookingIds, false);
+                            }
+                            Alert.alert('สำเร็จ!', `Check-in ${totalIndividualBookings} รายการเรียบร้อยแล้ว`);
+                        } catch (err: any) {
+                            Alert.alert('เกิดข้อผิดพลาด', err.message);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleNoShowAll = async () => {
+        const pendingBookings = bookingResults.filter(b => b.status !== 'COMPLETED' && b.status !== 'NO_SHOW' && b.status !== 'CANCELLED');
+
+        if (pendingBookings.length === 0) return;
+
+        // Count total individual bookings (including merged)
+        const totalIndividualBookings = pendingBookings.reduce((sum, b) => {
+            const ids = (b as any).mergedBookingIds || [b.id];
+            return sum + ids.length;
+        }, 0);
+
+        Alert.alert(
+            'ยืนยัน No-Show ทั้งหมด',
+            `คุณต้องการทำเครื่องหมาย No-Show ${totalIndividualBookings} รายการใช่หรือไม่?`,
+            [
+                { text: 'ยกเลิก', style: 'cancel' },
+                {
+                    text: 'ยืนยัน',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Mark all pending bookings as no-show (including merged ones)
+                            for (const booking of pendingBookings) {
+                                const bookingIds = (booking as any).mergedBookingIds || [booking.id];
+                                for (const id of bookingIds) {
+                                    await bookingService.markNoShow(id);
+                                }
+                            }
+                            // Update all booking statuses
+                            setBookingResults(prev => prev.map(b =>
+                                pendingBookings.find(pb => pb.id === b.id) ? { ...b, status: 'NO_SHOW' } : b
+                            ));
+                            Alert.alert('สำเร็จ!', `ทำเครื่องหมาย No-Show ${totalIndividualBookings} รายการเรียบร้อยแล้ว`);
+                        } catch (err: any) {
+                            Alert.alert('เกิดข้อผิดพลาด', err.message);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleTogglePayment = async (bookingId: string) => {
+        // Find the booking
+        const booking = bookingResults.find(b => b.id === bookingId);
+        if (!booking) return;
+
+        const newIsPaid = !booking.isPaid;
+
+        // Optimistic update
+        setBookingResults(prev => prev.map(b =>
+            b.id === bookingId ? { ...b, isPaid: newIsPaid } : b
+        ));
+
+        // Get all booking IDs (if merged)
+        const bookingIds = (booking as any).mergedBookingIds || [bookingId];
+
+        try {
+            for (const id of bookingIds) {
+                if (newIsPaid) {
+                    await bookingService.markAsPaid(id);
+                } else {
+                    await bookingService.unmarkAsPaid(id);
+                }
+            }
+        } catch (err: any) {
+            // Revert on error
+            setBookingResults(prev => prev.map(b =>
+                b.id === bookingId ? { ...b, isPaid: !newIsPaid } : b
+            ));
+            Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอัพเดทสถานะการชำระเงินได้');
+        }
     };
 
     const handleReset = () => {
@@ -475,6 +711,9 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
     const renderBookingResult = () => {
         if (bookingResults.length === 0) return null;
 
+        const pendingBookings = bookingResults.filter(b => b.status !== 'COMPLETED' && b.status !== 'NO_SHOW');
+        const canCheckInAll = pendingBookings.length > 0;
+
         return (
             <View style={styles.resultOverlay}>
                 <ScrollView style={styles.resultScrollView} contentContainerStyle={styles.resultScrollContent}>
@@ -507,6 +746,36 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                         <Text style={styles.bookingsCountText}>
                             พบ {bookingResults.length} การจอง
                         </Text>
+
+                        {/* Bulk Actions */}
+                        {canCheckInAll && (
+                            <View style={styles.bulkActionsSection}>
+                                <TouchableOpacity
+                                    style={styles.checkInAllButton}
+                                    onPress={handleCheckInAll}
+                                    disabled={Object.values(checkingIn).some(v => v)}
+                                >
+                                    {Object.values(checkingIn).some(v => v) ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                    ) : (
+                                        <>
+                                            <MaterialCommunityIcons name="check-all" size={22} color="#FFFFFF" />
+                                            <Text style={styles.checkInAllButtonText}>Check-in ทั้งหมด</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.noShowAllButton}
+                                    onPress={handleNoShowAll}
+                                    disabled={Object.values(checkingIn).some(v => v)}
+                                >
+                                    <MaterialCommunityIcons name="account-off" size={20} color="#DC2626" />
+                                    <Text style={styles.noShowAllButtonText}>No-Show ทั้งหมด</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <View style={styles.divider} />
 
                         {/* Booking List */}
                         {bookingResults.map((booking, index) => (
@@ -547,6 +816,16 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                                     </View>
 
                                     <View style={styles.detailRow}>
+                                        <MaterialCommunityIcons name="calendar" size={20} color={colors.neutral[500]} />
+                                        <View style={styles.detailContent}>
+                                            <Text style={styles.detailLabel}>วันที่</Text>
+                                            <Text style={styles.detailValue}>
+                                                {dateFnsFormat(parseISO(booking.timeSlotStart), 'd MMMM yyyy', { locale: th })}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
                                         <MaterialCommunityIcons name="clock-outline" size={20} color={colors.neutral[500]} />
                                         <View style={styles.detailContent}>
                                             <Text style={styles.detailLabel}>เวลา</Text>
@@ -565,61 +844,75 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                                             </Text>
                                         </View>
                                     </View>
+
+                                    {/* Payment Status Checkbox */}
+                                    <TouchableOpacity
+                                        style={styles.paymentCheckbox}
+                                        onPress={() => handleTogglePayment(booking.id)}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name={booking.isPaid ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                            size={24}
+                                            color={booking.isPaid ? colors.primary[600] : colors.neutral[400]}
+                                        />
+                                        <Text style={[
+                                            styles.paymentCheckboxText,
+                                            booking.isPaid && styles.paymentCheckboxTextChecked
+                                        ]}>
+                                            จ่ายเงินแล้ว
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
 
-                                {/* Action Buttons */}
-                                <View style={styles.bookingActionsSection}>
-                                    {booking.status !== 'COMPLETED' && booking.status !== 'NO_SHOW' && (
-                                        <>
-                                            <TouchableOpacity
-                                                style={styles.checkInButton}
-                                                onPress={() => handleCheckIn(booking.id)}
-                                                disabled={checkingIn[booking.id]}
-                                            >
-                                                {checkingIn[booking.id] ? (
-                                                    <ActivityIndicator color="#FFFFFF" size="small" />
-                                                ) : (
-                                                    <>
-                                                        <MaterialCommunityIcons name="check-bold" size={20} color="#FFFFFF" />
-                                                        <Text style={styles.checkInButtonText}>Check-in</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.noShowButton}
-                                                onPress={() => handleNoShow(booking.id)}
-                                                disabled={checkingIn[booking.id]}
-                                            >
-                                                <MaterialCommunityIcons name="account-off" size={18} color="#DC2626" />
-                                                <Text style={styles.noShowButtonText}>No-Show</Text>
-                                            </TouchableOpacity>
-                                        </>
-                                    )}
+                                {/* Status Indicators */}
+                                {booking.status === 'COMPLETED' && (
+                                    <View style={styles.completedBanner}>
+                                        <MaterialCommunityIcons name="check-circle" size={20} color="#16A34A" />
+                                        <Text style={styles.completedText}>Check-in แล้ว</Text>
+                                    </View>
+                                )}
 
-                                    {booking.status === 'COMPLETED' && (
-                                        <View style={styles.completedBanner}>
-                                            <MaterialCommunityIcons name="check-circle" size={20} color="#16A34A" />
-                                            <Text style={styles.completedText}>Check-in แล้ว</Text>
-                                        </View>
-                                    )}
+                                {booking.status === 'NO_SHOW' && (
+                                    <View style={styles.noShowBanner}>
+                                        <MaterialCommunityIcons name="account-off" size={20} color="#9333EA" />
+                                        <Text style={styles.noShowBannerText}>No-Show</Text>
+                                    </View>
+                                )}
 
-                                    {booking.status === 'NO_SHOW' && (
-                                        <View style={styles.noShowBanner}>
-                                            <MaterialCommunityIcons name="account-off" size={20} color="#9333EA" />
-                                            <Text style={styles.noShowBannerText}>No-Show</Text>
-                                        </View>
-                                    )}
-                                </View>
+                                {booking.status === 'CANCELLED' && (
+                                    <View style={styles.cancelledBanner}>
+                                        <MaterialCommunityIcons name="close-circle" size={20} color="#DC2626" />
+                                        <Text style={styles.cancelledText}>ยกเลิกแล้ว</Text>
+                                    </View>
+                                )}
+
+                                {/* Cancel Button - only show for PENDING/CONFIRMED */}
+                                {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+                                    <TouchableOpacity
+                                        style={styles.cancelBookingButton}
+                                        onPress={() => handleCancelBooking(booking.id)}
+                                    >
+                                        <MaterialCommunityIcons name="close-circle-outline" size={20} color="#DC2626" />
+                                        <Text style={styles.cancelBookingButtonText}>ยกเลิกการจอง</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 {index < bookingResults.length - 1 && <View style={styles.bookingDivider} />}
                             </View>
                         ))}
 
-                        {/* Reset Button */}
-                        <TouchableOpacity style={styles.scanAgainButton} onPress={handleReset}>
-                            <MaterialCommunityIcons name="qrcode-scan" size={20} color={colors.primary[600]} />
-                            <Text style={styles.scanAgainButtonText}>ค้นหาใหม่</Text>
-                        </TouchableOpacity>
+                        {/* Action Buttons */}
+                        <View style={styles.bottomActionsSection}>
+                            <TouchableOpacity style={styles.scanAgainButton} onPress={handleReset}>
+                                <MaterialCommunityIcons name="qrcode-scan" size={20} color={colors.primary[600]} />
+                                <Text style={styles.scanAgainButtonText}>ค้นหาใหม่</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.closeResultButton} onPress={handleClose}>
+                                <MaterialCommunityIcons name="close" size={20} color={colors.neutral[600]} />
+                                <Text style={styles.closeResultButtonText}>ปิดหน้าต่าง</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </ScrollView>
             </View>
@@ -924,10 +1217,10 @@ const styles = StyleSheet.create({
     },
     resultCard: {
         width: '100%',
-        maxWidth: 400,
+        maxWidth: '95%',
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
-        padding: 24,
+        padding: 20,
     },
     errorIconContainer: {
         alignItems: 'center',
@@ -1155,11 +1448,101 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         backgroundColor: colors.primary[50],
         borderRadius: 14,
-        marginTop: 16,
     },
     scanAgainButtonText: {
         fontFamily: 'Kanit-SemiBold',
         fontSize: 16,
         color: colors.primary[600],
+    },
+    bulkActionsSection: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    checkInAllButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 16,
+        backgroundColor: '#16A34A',
+        borderRadius: 14,
+    },
+    checkInAllButtonText: {
+        fontFamily: 'Kanit-Bold',
+        fontSize: 16,
+        color: '#FFFFFF',
+    },
+    noShowAllButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+    },
+    noShowAllButtonText: {
+        fontFamily: 'Kanit-SemiBold',
+        fontSize: 14,
+        color: '#DC2626',
+    },
+    paymentCheckbox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: colors.neutral[50],
+        borderRadius: 12,
+        marginTop: 8,
+    },
+    paymentCheckboxText: {
+        fontFamily: 'Kanit-Regular',
+        fontSize: 15,
+        color: colors.neutral[600],
+    },
+    paymentCheckboxTextChecked: {
+        fontFamily: 'Kanit-SemiBold',
+        color: colors.primary[600],
+    },
+    cancelBookingButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        marginTop: 12,
+    },
+    cancelBookingButtonText: {
+        fontFamily: 'Kanit-SemiBold',
+        fontSize: 15,
+        color: '#DC2626',
+    },
+    bottomActionsSection: {
+        gap: 12,
+        marginTop: 16,
+    },
+    closeResultButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        backgroundColor: colors.neutral[100],
+        borderRadius: 14,
+    },
+    closeResultButtonText: {
+        fontFamily: 'Kanit-SemiBold',
+        fontSize: 16,
+        color: colors.neutral[600],
     },
 });

@@ -40,3 +40,31 @@ export interface Booking {
     confirmedAt?: string;
     cancelledAt?: string;
 }
+
+export interface BookingLookupResult {
+    id: string;
+    status: string;
+    timeSlotStart: string;
+    timeSlotEnd: string;
+    totalPrice: number;
+    createdAt: string;
+    confirmedAt: string | null;
+    notes: string | null;
+    customer: {
+        id: string;
+        name: string;
+        phone: string;
+        email: string | null;
+    } | null;
+    facility: {
+        type: 'court' | 'capacity';
+        id: string;
+        name: string;
+        sportType?: string;
+        businessName?: string;
+    } | null;
+
+    // Frontend properties
+    isPaid?: boolean;
+    mergedBookingIds?: string[]; // IDs of bookings that were merged into this one
+}
