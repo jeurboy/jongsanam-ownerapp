@@ -600,7 +600,7 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                             กรุณาอนุญาตให้แอปเข้าถึงกล้องเพื่อสแกน QR Code
                         </Text>
                         <TouchableOpacity style={styles.permissionButton} onPress={handlePermissionRequest}>
-                            <Text style={styles.permissionButtonText}>อนุญาตเข้าถึงกล้อง</Text>
+                            <Text style={styles.permissionButtonText}>ดำเนินการต่อ</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.manualModeButton}
