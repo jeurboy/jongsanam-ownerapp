@@ -25,6 +25,8 @@ import { UserManagerView } from './dashboard/UserManagerView';
 import { DashboardView } from './dashboard/DashboardView';
 import { SettingsView } from './dashboard/SettingsView';
 import { QRScannerScreen } from './QRScannerScreen';
+import { NotificationModal } from '../components/NotificationModal';
+import { Notification, notificationService } from '../services/notification.service';
 
 
 const MENU_ITEMS = [
@@ -72,6 +74,62 @@ export const HomeScreen = () => {
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<SidebarTab>('overview');
     const [showQRScanner, setShowQRScanner] = useState(false);
+
+    // Notification State
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
+
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchNotifications = async () => {
+        try {
+            const data = await notificationService.getNotifications();
+            setNotifications(data.notifications);
+            setUnreadCount(data.unreadCount);
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        }
+    };
+
+    const handleMarkAsRead = async (id: string) => {
+        try {
+            await notificationService.markAsRead([id]);
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error('Failed to mark as read:', error);
+        }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            setLoadingNotifications(true);
+            await notificationService.markAllAsRead();
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Failed to mark all as read:', error);
+        } finally {
+            setLoadingNotifications(false);
+        }
+    };
+
+    const handleNotificationClick = (notification: Notification) => {
+        if (!notification.isRead) {
+            handleMarkAsRead(notification.id);
+        }
+        setShowNotifications(false);
+
+        if (notification.type === 'NEW_BOOKING') {
+            setActiveTab('booking');
+        }
+    };
 
     useEffect(() => {
         // Orientation is now handled in AppNavigator
@@ -134,6 +192,34 @@ export const HomeScreen = () => {
                 <TouchableOpacity style={styles.scannerButton} onPress={() => setShowQRScanner(true)}>
                     <MaterialCommunityIcons name="qrcode-scan" size={24} color={colors.primary[600]} />
                 </TouchableOpacity>
+
+                {/* Notification Button */}
+                {(() => {
+                    const hasUnread = unreadCount > 0 || notifications.some(n => !n.isRead);
+                    const displayCount = unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : notifications.filter(n => !n.isRead).length;
+
+                    return (
+                        <TouchableOpacity
+                            style={[
+                                styles.notificationButton,
+                                hasUnread && styles.notificationButtonActive
+                            ]}
+                            onPress={() => setShowNotifications(true)}
+                        >
+                            <MaterialCommunityIcons
+                                name={hasUnread ? "bell-ring" : "bell-outline"}
+                                size={24}
+                                color={hasUnread ? "#fff" : colors.neutral[600]}
+                            />
+                            {hasUnread && (
+                                <View style={styles.badgeOnRed}>
+                                    <Text style={styles.badgeTextOnRed}>{displayCount}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    );
+                })()}
+
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                     <MaterialCommunityIcons name="logout" size={24} color={colors.neutral[500]} />
                 </TouchableOpacity>
@@ -224,6 +310,17 @@ export const HomeScreen = () => {
                 onClose={() => setShowQRScanner(false)}
                 businessId={selectedBusinessId || undefined}
             />
+
+            {/* Notification Modal */}
+            <NotificationModal
+                visible={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                notifications={notifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                loading={loadingNotifications}
+                onNotificationClick={handleNotificationClick}
+            />
         </View>
     );
 };
@@ -273,6 +370,63 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: 'rgba(99, 102, 241, 0.2)',
+    },
+    notificationButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.neutral[200],
+        position: 'relative',
+    },
+    notificationButtonActive: {
+        backgroundColor: colors.error,
+        borderColor: colors.error,
+    },
+    badgeOnRed: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1,
+        borderColor: colors.error,
+        zIndex: 10,
+        elevation: 5,
+    },
+    badgeTextOnRed: {
+        color: colors.error,
+        fontSize: 10,
+        fontFamily: 'Kanit-Bold',
+    },
+    badge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: colors.error[500],
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 2,
+        borderColor: '#fff',
+        zIndex: 10,
+        elevation: 5,
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontFamily: 'Kanit-Bold',
     },
     launcherContainer: {
         flex: 1,
