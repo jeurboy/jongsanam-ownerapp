@@ -86,13 +86,13 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     tabItemSelected: {
-        backgroundColor: colors.primary.main,
-        borderColor: colors.primary.main,
-        shadowColor: colors.primary.main,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        elevation: 3,
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep rich blue (Menu Color)
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     tabText: {
         fontFamily: fonts.medium,

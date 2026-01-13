@@ -147,6 +147,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     const [relatedBookingIds, setRelatedBookingIds] = useState<string[]>([]); // Track related merged booking IDs
     const [managementMode, setManagementMode] = useState<'SLOT' | 'CAPACITY'>('SLOT');
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [showPhoneNumbers, setShowPhoneNumbers] = useState(true);
 
     // Update current time every minute
     useEffect(() => {
@@ -985,6 +986,27 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                         </TouchableOpacity>
                     </View>
 
+                    <TouchableOpacity
+                        style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: showPhoneNumbers ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: showPhoneNumbers ? colors.primary.main : colors.neutral[300],
+                            marginRight: 8
+                        }}
+                        onPress={() => setShowPhoneNumbers(!showPhoneNumbers)}
+                    >
+                        <MaterialCommunityIcons
+                            name={showPhoneNumbers ? "eye" : "eye-off"}
+                            size={20}
+                            color={showPhoneNumbers ? colors.primary.main : colors.neutral[500]}
+                        />
+                    </TouchableOpacity>
+
                     <View style={styles.dateControls}>
                         <TouchableOpacity onPress={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))}>
                             <MaterialCommunityIcons name="chevron-left" size={30} color={colors.neutral[600]} />
@@ -1018,7 +1040,7 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                         onPress={() => openAddModal()}
                                         activeOpacity={0.7}
                                     >
-                                        <MaterialCommunityIcons name="plus-box" size={24} color={colors.primary.main} />
+                                        <MaterialCommunityIcons name="plus-box" size={24} color="#2563EB" />
                                     </TouchableOpacity>
                                     <ScrollView
                                         horizontal
@@ -1190,7 +1212,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                                 )}
                                                                             </View>
                                                                             <Text style={styles.bookingSubText} numberOfLines={1}>
-                                                                                {mergedBooking.bookings[0].serviceUser?.phone || ''}
+                                                                                {showPhoneNumbers
+                                                                                    ? (mergedBooking.bookings[0].serviceUser?.phone || '')
+                                                                                    : (mergedBooking.bookings[0].serviceUser?.phone ? `xxx-xxx-${mergedBooking.bookings[0].serviceUser.phone.slice(-4)}` : '')}
                                                                             </Text>
                                                                         </TouchableOpacity>
                                                                     );
@@ -1327,7 +1351,11 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                             </View>
                                                                             <View style={styles.bookingUserInfo}>
                                                                                 <Text style={styles.bookingUserName}>{booking.customerName || booking.serviceUser?.name || 'ลูกค้า'}</Text>
-                                                                                <Text style={styles.bookingUserPhone}>{booking.customerPhone || booking.serviceUser?.phone}</Text>
+                                                                                <Text style={styles.bookingUserPhone}>
+                                                                                    {showPhoneNumbers
+                                                                                        ? (booking.customerPhone || booking.serviceUser?.phone)
+                                                                                        : ((booking.customerPhone || booking.serviceUser?.phone) ? `xxx-xxx-${(booking.customerPhone || booking.serviceUser?.phone || '').slice(-4)}` : '')}
+                                                                                </Text>
                                                                             </View>
                                                                             <View style={[styles.statusTag, { backgroundColor: booking.status === 'CONFIRMED' ? '#DCFCE7' : '#FEF9C3' }]}>
                                                                                 <Text style={styles.statusTextSmall}>{translateBookingStatus(booking.status)}</Text>
@@ -1403,195 +1431,195 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                 showsVerticalScrollIndicator={windowWidth < 600}
                                 bounces={true}
                             >
-                            <View style={[styles.modalTwoColumn, windowWidth < 600 && styles.modalSingleColumn]}>
-                                {/* Left Column: Details */}
-                                <View style={[styles.modalLeftColumn, windowWidth < 600 && styles.modalLeftColumnMobile]}>
-                                    {/* Booking ID */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="pound" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>รหัสการจอง</Text>
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    if (selectedBooking.id) {
-                                                        Clipboard.setString(selectedBooking.id);
-                                                        Alert.alert('คัดลอกสำเร็จ', 'รหัสการจองถูกคัดลอกแล้ว');
-                                                    }
-                                                }}
-                                            >
-                                                <View style={styles.copyableRow}>
-                                                    <Text style={[styles.detailValueCopyable, { fontSize: windowWidth < 600 ? 12 : 13 }]} numberOfLines={1} ellipsizeMode="middle">
-                                                        {selectedBooking.id}
-                                                    </Text>
-                                                    <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 14} color={colors.primary.main} />
-                                                </View>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-
-                                    {/* Customer Name */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="account" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ลูกค้า</Text>
-                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Phone */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="phone" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เบอร์โทรศัพท์</Text>
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
-                                                    if (phone) {
-                                                        Clipboard.setString(phone);
-                                                        Alert.alert('คัดลอกสำเร็จ', `เบอร์ ${phone} ถูกคัดลอกแล้ว`);
-                                                    }
-                                                }}
-                                            >
-                                                <View style={styles.copyableRow}>
-                                                    <Text style={[styles.detailValueCopyable, windowWidth < 600 && { fontSize: 13 }]}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
-                                                    <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 16} color={colors.primary.main} />
-                                                </View>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-
-                                    {/* Court */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="map-marker" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สนาม</Text>
-                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Time */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="clock-outline" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เวลา</Text>
-                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>
-                                                {format(parseISO(selectedBooking.timeSlotStart), 'd MMM yyyy, HH:mm', { locale: th })} - {format(parseISO(selectedBooking.timeSlotEnd), 'HH:mm')}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Price */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="cash" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ราคา</Text>
-                                            <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.totalPrice} บาท</Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Payment Status */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name={selectedBooking.isPaid ? "check-circle-outline" : "alert-circle-outline"} size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>การชำระเงิน</Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile, { color: selectedBooking.isPaid ? colors.success : colors.warning }]}>
-                                                    {selectedBooking.isPaid ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
-                                                </Text>
-                                                {selectedBooking.paidAt && (
-                                                    <Text style={{ fontSize: windowWidth < 600 ? 10 : 12, color: colors.neutral[500] }}>
-                                                        ({format(parseISO(selectedBooking.paidAt), 'd MMM HH:mm', { locale: th })})
-                                                    </Text>
-                                                )}
+                                <View style={[styles.modalTwoColumn, windowWidth < 600 && styles.modalSingleColumn]}>
+                                    {/* Left Column: Details */}
+                                    <View style={[styles.modalLeftColumn, windowWidth < 600 && styles.modalLeftColumnMobile]}>
+                                        {/* Booking ID */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="pound" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>รหัสการจอง</Text>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (selectedBooking.id) {
+                                                            Clipboard.setString(selectedBooking.id);
+                                                            Alert.alert('คัดลอกสำเร็จ', 'รหัสการจองถูกคัดลอกแล้ว');
+                                                        }
+                                                    }}
+                                                >
+                                                    <View style={styles.copyableRow}>
+                                                        <Text style={[styles.detailValueCopyable, { fontSize: windowWidth < 600 ? 12 : 13 }]} numberOfLines={1} ellipsizeMode="middle">
+                                                            {selectedBooking.id}
+                                                        </Text>
+                                                        <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 14} color={colors.primary.main} />
+                                                    </View>
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
-                                    </View>
 
-                                    {/* Status */}
-                                    <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
-                                        <MaterialCommunityIcons name="list-status" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
-                                        <View>
-                                            <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สถานะ</Text>
-                                            <View style={[styles.statusBadge, {
-                                                backgroundColor: selectedBooking.status === BookingStatus.CONFIRMED ? '#DCFCE7' :
-                                                    selectedBooking.status === BookingStatus.PENDING ? '#FEF9C3' : colors.neutral[100]
-                                            }]}>
-                                                <Text style={[styles.statusText, {
-                                                    color: selectedBooking.status === BookingStatus.CONFIRMED ? '#166534' :
-                                                        selectedBooking.status === BookingStatus.PENDING ? '#854D0E' : colors.neutral[700]
+                                        {/* Customer Name */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="account" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ลูกค้า</Text>
+                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.serviceUser?.name || selectedBooking.customerName || '-'}</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Phone */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="phone" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เบอร์โทรศัพท์</Text>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        const phone = selectedBooking.serviceUser?.phone || selectedBooking.customerPhone;
+                                                        if (phone) {
+                                                            Clipboard.setString(phone);
+                                                            Alert.alert('คัดลอกสำเร็จ', `เบอร์ ${phone} ถูกคัดลอกแล้ว`);
+                                                        }
+                                                    }}
+                                                >
+                                                    <View style={styles.copyableRow}>
+                                                        <Text style={[styles.detailValueCopyable, windowWidth < 600 && { fontSize: 13 }]}>{selectedBooking.serviceUser?.phone || selectedBooking.customerPhone || '-'}</Text>
+                                                        <MaterialCommunityIcons name="content-copy" size={windowWidth < 600 ? 12 : 16} color={colors.primary.main} />
+                                                    </View>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+
+                                        {/* Court */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="map-marker" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สนาม</Text>
+                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.court?.name || selectedBooking.courtId}</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Time */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="clock-outline" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>เวลา</Text>
+                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>
+                                                    {format(parseISO(selectedBooking.timeSlotStart), 'd MMM yyyy, HH:mm', { locale: th })} - {format(parseISO(selectedBooking.timeSlotEnd), 'HH:mm')}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Price */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="cash" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>ราคา</Text>
+                                                <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile]}>{selectedBooking.totalPrice} บาท</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Payment Status */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name={selectedBooking.isPaid ? "check-circle-outline" : "alert-circle-outline"} size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>การชำระเงิน</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                    <Text style={[styles.detailValue, windowWidth < 600 && styles.detailValueMobile, { color: selectedBooking.isPaid ? colors.success : colors.warning }]}>
+                                                        {selectedBooking.isPaid ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
+                                                    </Text>
+                                                    {selectedBooking.paidAt && (
+                                                        <Text style={{ fontSize: windowWidth < 600 ? 10 : 12, color: colors.neutral[500] }}>
+                                                            ({format(parseISO(selectedBooking.paidAt), 'd MMM HH:mm', { locale: th })})
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Status */}
+                                        <View style={[styles.detailRow, windowWidth < 600 && styles.detailRowMobile]}>
+                                            <MaterialCommunityIcons name="list-status" size={windowWidth < 600 ? 16 : 20} color={colors.neutral[500]} style={[styles.detailIcon, windowWidth < 600 && styles.detailIconMobile]} />
+                                            <View>
+                                                <Text style={[styles.detailLabel, windowWidth < 600 && styles.detailLabelMobile]}>สถานะ</Text>
+                                                <View style={[styles.statusBadge, {
+                                                    backgroundColor: selectedBooking.status === BookingStatus.CONFIRMED ? '#DCFCE7' :
+                                                        selectedBooking.status === BookingStatus.PENDING ? '#FEF9C3' : colors.neutral[100]
                                                 }]}>
-                                                    {translateBookingStatus(selectedBooking.status)}
-                                                </Text>
+                                                    <Text style={[styles.statusText, {
+                                                        color: selectedBooking.status === BookingStatus.CONFIRMED ? '#166534' :
+                                                            selectedBooking.status === BookingStatus.PENDING ? '#854D0E' : colors.neutral[700]
+                                                    }]}>
+                                                        {translateBookingStatus(selectedBooking.status)}
+                                                    </Text>
+                                                </View>
                                             </View>
                                         </View>
                                     </View>
-                                </View>
 
-                                {/* Right Column: Action Buttons */}
-                                <View style={[styles.modalRightColumn, windowWidth < 600 && styles.modalRightColumnMobile]}>
-                                    <TouchableOpacity
-                                        style={[styles.editButton, windowWidth < 600 && styles.editButtonMobile]}
-                                        onPress={handleEditBooking}
-                                    >
-                                        <MaterialCommunityIcons name="pencil" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                        <Text style={[styles.editButtonText, windowWidth < 600 && { fontSize: 13 }]}>แก้ไขการจอง</Text>
-                                    </TouchableOpacity>
+                                    {/* Right Column: Action Buttons */}
+                                    <View style={[styles.modalRightColumn, windowWidth < 600 && styles.modalRightColumnMobile]}>
+                                        <TouchableOpacity
+                                            style={[styles.editButton, windowWidth < 600 && styles.editButtonMobile]}
+                                            onPress={handleEditBooking}
+                                        >
+                                            <MaterialCommunityIcons name="pencil" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                            <Text style={[styles.editButtonText, windowWidth < 600 && { fontSize: 13 }]}>แก้ไขการจอง</Text>
+                                        </TouchableOpacity>
 
-                                    {/* Action Buttons based on Status */}
-                                    <View style={[styles.actionButtonsContainer, windowWidth < 600 && styles.actionButtonsContainerMobile]}>
-                                        {selectedBooking.status === 'PENDING' && (
-                                            <TouchableOpacity
-                                                style={[styles.actionButton, styles.confirmButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                onPress={handleConfirmBooking}
-                                            >
-                                                <MaterialCommunityIcons name="check-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยืนยันการจอง</Text>
-                                            </TouchableOpacity>
-                                        )}
-
-                                        {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
-                                            <>
+                                        {/* Action Buttons based on Status */}
+                                        <View style={[styles.actionButtonsContainer, windowWidth < 600 && styles.actionButtonsContainerMobile]}>
+                                            {selectedBooking.status === 'PENDING' && (
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, styles.completedButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                    onPress={handleMarkCompleted}
+                                                    style={[styles.actionButton, styles.confirmButton, windowWidth < 600 && styles.actionButtonMobile]}
+                                                    onPress={handleConfirmBooking}
                                                 >
-                                                    <MaterialCommunityIcons name="account-check" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>{windowWidth < 600 ? 'มาใช้บริการ' : 'ลูกค้ามาใช้บริการแล้ว'}</Text>
+                                                    <MaterialCommunityIcons name="check-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยืนยันการจอง</Text>
                                                 </TouchableOpacity>
+                                            )}
 
+                                            {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
+                                                <>
+                                                    <TouchableOpacity
+                                                        style={[styles.actionButton, styles.completedButton, windowWidth < 600 && styles.actionButtonMobile]}
+                                                        onPress={handleMarkCompleted}
+                                                    >
+                                                        <MaterialCommunityIcons name="account-check" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>{windowWidth < 600 ? 'มาใช้บริการ' : 'ลูกค้ามาใช้บริการแล้ว'}</Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        style={[styles.actionButton, styles.noShowButton, windowWidth < 600 && styles.actionButtonMobile]}
+                                                        onPress={handleMarkNoShow}
+                                                    >
+                                                        <MaterialCommunityIcons name="account-remove" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>No-Show</Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        style={[styles.actionButton, styles.cancelButtonModal, windowWidth < 600 && styles.actionButtonMobile]}
+                                                        onPress={handleCancelBooking}
+                                                    >
+                                                        <MaterialCommunityIcons name="close-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
+                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยกเลิก</Text>
+                                                    </TouchableOpacity>
+                                                </>
+                                            )}
+
+                                            {/* Payment Button - Visible for PENDING, CONFIRMED, COMPLETED */}
+                                            {['PENDING', 'CONFIRMED', 'COMPLETED'].includes(selectedBooking.status) && (
                                                 <TouchableOpacity
-                                                    style={[styles.actionButton, styles.noShowButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                    onPress={handleMarkNoShow}
+                                                    style={[styles.actionButton, selectedBooking.isPaid ? styles.unpaidButton : styles.paidButton, windowWidth < 600 && styles.actionButtonMobile]}
+                                                    onPress={handleTogglePayment}
                                                 >
-                                                    <MaterialCommunityIcons name="account-remove" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>No-Show</Text>
+                                                    <MaterialCommunityIcons name={selectedBooking.isPaid ? "cash-refund" : "cash-check"} size={windowWidth < 600 ? 16 : 20} color={selectedBooking.isPaid ? colors.neutral[700] : colors.white} />
+                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile, selectedBooking.isPaid && { color: colors.neutral[700] }]}>
+                                                        {selectedBooking.isPaid ? (windowWidth < 600 ? 'ยกเลิกชำระ' : 'ยกเลิกการชำระเงิน') : (windowWidth < 600 ? 'ชำระเงิน' : 'บันทึกการชำระเงิน')}
+                                                    </Text>
                                                 </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={[styles.actionButton, styles.cancelButtonModal, windowWidth < 600 && styles.actionButtonMobile]}
-                                                    onPress={handleCancelBooking}
-                                                >
-                                                    <MaterialCommunityIcons name="close-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยกเลิก</Text>
-                                                </TouchableOpacity>
-                                            </>
-                                        )}
-
-                                        {/* Payment Button - Visible for PENDING, CONFIRMED, COMPLETED */}
-                                        {['PENDING', 'CONFIRMED', 'COMPLETED'].includes(selectedBooking.status) && (
-                                            <TouchableOpacity
-                                                style={[styles.actionButton, selectedBooking.isPaid ? styles.unpaidButton : styles.paidButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                onPress={handleTogglePayment}
-                                            >
-                                                <MaterialCommunityIcons name={selectedBooking.isPaid ? "cash-refund" : "cash-check"} size={windowWidth < 600 ? 16 : 20} color={selectedBooking.isPaid ? colors.neutral[700] : colors.white} />
-                                                <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile, selectedBooking.isPaid && { color: colors.neutral[700] }]}>
-                                                    {selectedBooking.isPaid ? (windowWidth < 600 ? 'ยกเลิกชำระ' : 'ยกเลิกการชำระเงิน') : (windowWidth < 600 ? 'ชำระเงิน' : 'บันทึกการชำระเงิน')}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
+                                            )}
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
                             </ScrollView>
                         ) : null}
                     </View>
@@ -2172,7 +2200,7 @@ const styles = StyleSheet.create({
         height: HEADER_HEIGHT,
         borderBottomWidth: 1,
         borderBottomColor: colors.neutral[200],
-        backgroundColor: colors.neutral[50],
+        backgroundColor: '#FFFFFF', // Simple white bg
     },
     columnHeader: {
         width: MIN_COURT_COL_WIDTH,
@@ -2185,7 +2213,7 @@ const styles = StyleSheet.create({
     columnHeaderText: {
         fontFamily: fonts.semiBold,
         fontSize: 12,
-        color: colors.neutral[700],
+        color: '#2563EB', // Blue text
     },
     verticalScroll: {
         flex: 1,
@@ -2606,7 +2634,7 @@ const styles = StyleSheet.create({
     submitButton: {
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: colors.primary.main,
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep Blue
         paddingVertical: spacing.md,
         borderRadius: borderRadius.md,
         alignItems: 'center',
@@ -2625,7 +2653,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.primary.main, // same as submit
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep Blue
         paddingVertical: spacing.md,
         paddingHorizontal: spacing.lg,
         borderRadius: borderRadius.md,
@@ -2658,8 +2686,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRightWidth: 1,
-        borderRightColor: colors.neutral[200],
-        backgroundColor: colors.white,
+        borderRightColor: colors.neutral[100],
+        backgroundColor: '#FFFFFF',
     },
     // Capacity Base Styles
     capacityCell: {
@@ -2740,7 +2768,7 @@ const styles = StyleSheet.create({
     addCapacityButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.primary.main,
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep Blue
         paddingVertical: 6,
         paddingHorizontal: spacing.md,
         borderRadius: borderRadius.md,

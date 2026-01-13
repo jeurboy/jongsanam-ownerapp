@@ -8,6 +8,7 @@ import {
     FlatList,
     SafeAreaView,
     TouchableWithoutFeedback,
+    useWindowDimensions,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, spacing, borderRadius, fontSize } from '../theme/tokens';
@@ -23,6 +24,7 @@ interface BusinessSelectorProps {
 
 export const BusinessSelector = ({ businesses, selectedId, onSelect, containerStyle }: BusinessSelectorProps) => {
     const [isVisible, setIsVisible] = useState(false);
+    const { width } = useWindowDimensions();
 
     // If no businesses, show a placeholder or loading state instead of null
     if (!businesses || businesses.length === 0) {
@@ -65,7 +67,7 @@ export const BusinessSelector = ({ businesses, selectedId, onSelect, containerSt
                         </Text>
                     </View>
                 </View>
-                <MaterialCommunityIcons name="chevron-down" size={24} color={colors.neutral[500]} />
+                <MaterialCommunityIcons name="chevron-down" size={24} color="rgba(255, 255, 255, 0.7)" />
             </TouchableOpacity>
 
             <Modal
@@ -73,12 +75,12 @@ export const BusinessSelector = ({ businesses, selectedId, onSelect, containerSt
                 transparent
                 animationType="fade"
                 onRequestClose={() => setIsVisible(false)}
-                supportedOrientations={['landscape']}
+                supportedOrientations={['portrait', 'landscape']}
             >
                 <TouchableWithoutFeedback onPress={() => setIsVisible(false)}>
                     <View style={styles.modalOverlay}>
                         <TouchableWithoutFeedback>
-                            <View style={styles.modalContent}>
+                            <View style={[styles.modalContent, { width: width > 600 ? '50%' : '90%' }]}>
                                 <View style={styles.modalHeader}>
                                     <Text style={styles.modalTitle}>เลือกธุรกิจของคุณ</Text>
                                     <TouchableOpacity onPress={() => setIsVisible(false)}>
@@ -132,12 +134,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        backgroundColor: 'rgba(2, 38, 99, 0.75)', // Deep rich blue
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         height: 54,
         // Soft liquid shadow
         shadowColor: '#000',
@@ -171,14 +173,14 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 10,
-        color: colors.neutral[500],
+        color: 'rgba(255, 255, 255, 0.7)',
         fontFamily: 'Kanit-Regular',
         marginBottom: 1,
     },
     value: {
         fontSize: 17,
         fontFamily: 'Kanit-Medium',
-        color: colors.neutral[900],
+        color: '#FFFFFF',
     },
     modalOverlay: {
         flex: 1,
@@ -188,7 +190,7 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        width: '50%',
+        // width handled dynamically
         borderRadius: 32,
         maxHeight: '70%',
         paddingBottom: spacing.xl,

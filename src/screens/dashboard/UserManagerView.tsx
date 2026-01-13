@@ -24,6 +24,7 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [members, setMembers] = useState<Member[]>([]);
+    const [showPhoneNumbers, setShowPhoneNumbers] = useState(true);
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -170,8 +171,29 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>จัดการสมาชิก</Text>
-                <Text style={styles.subtitle}>รายชื่อลูกค้าที่เคยจองสนาม ({total} คน)</Text>
+                <View>
+                    <Text style={styles.title}>จัดการสมาชิก</Text>
+                    <Text style={styles.subtitle}>รายชื่อลูกค้าที่เคยจองสนาม ({total} คน)</Text>
+                </View>
+                <TouchableOpacity
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: showPhoneNumbers ? 'rgba(2, 38, 99, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 1,
+                        borderColor: showPhoneNumbers ? 'rgba(2, 38, 99, 0.5)' : colors.neutral[300],
+                    }}
+                    onPress={() => setShowPhoneNumbers(!showPhoneNumbers)}
+                >
+                    <MaterialCommunityIcons
+                        name={showPhoneNumbers ? "eye" : "eye-off"}
+                        size={20}
+                        color={showPhoneNumbers ? 'rgba(2, 38, 99, 0.9)' : colors.neutral[500]}
+                    />
+                </TouchableOpacity>
             </View>
 
             {/* Search */}
@@ -246,7 +268,11 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
                                 </View>
                                 <View style={styles.memberInfo}>
                                     <Text style={styles.memberName}>{member.name || 'ไม่มีชื่อ'}</Text>
-                                    <Text style={styles.memberPhone}>{member.phone || '-'}</Text>
+                                    <Text style={styles.memberPhone}>
+                                        {showPhoneNumbers
+                                            ? (member.phone || '-')
+                                            : (member.phone ? `xxx-xxx-${member.phone.slice(-4)}` : '-')}
+                                    </Text>
                                 </View>
                                 <View style={styles.memberBadge}>
                                     <Text style={styles.memberBadgeText}>{member.totalBookings || 0} ครั้ง</Text>
@@ -364,7 +390,11 @@ export const UserManagerView = ({ businessId }: UserManagerViewProps) => {
                                     </View>
                                     <View style={styles.detailInfo}>
                                         <Text style={styles.detailName}>{selectedMember.name || 'ไม่มีชื่อ'}</Text>
-                                        <Text style={styles.detailPhone}>{selectedMember.phone || '-'}</Text>
+                                        <Text style={styles.detailPhone}>
+                                            {showPhoneNumbers
+                                                ? (selectedMember.phone || '-')
+                                                : (selectedMember.phone ? `xxx-xxx-${selectedMember.phone.slice(-4)}` : '-')}
+                                        </Text>
                                     </View>
                                 </View>
 

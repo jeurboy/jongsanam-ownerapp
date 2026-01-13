@@ -8,6 +8,8 @@ import {
     Image,
     StatusBar,
     Alert,
+    ImageBackground,
+    useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
@@ -33,42 +35,51 @@ const MENU_ITEMS = [
     {
         id: 'overview',
         title: 'หน้าหลัก',
-        image: require('../assets/launcher/icon_home.png'),
-        accent: '#6366F1',
+        iconName: 'home-variant',
+        accent: '#6366F1', // Indigo
+        description: 'กลับสู่หน้าเริ่มต้น'
     },
     {
         id: 'dashboard',
         title: 'ภาพรวม',
-        image: require('../assets/launcher/icon_dashboard.png'),
-        accent: '#3B82F6',
+        iconName: 'chart-box',
+        accent: '#3B82F6', // Blue
+        description: 'สถิติและรายได้'
     },
     {
         id: 'booking',
         title: 'จัดการการจอง',
-        image: require('../assets/launcher/icon_booking.png'),
-        accent: '#10B981',
+        iconName: 'calendar-clock',
+        accent: '#10B981', // Emerald
+        description: 'ตารางจองวันนี้'
     },
     {
         id: 'courts',
         title: 'จัดการสนาม',
-        image: require('../assets/launcher/icon_court.png'),
-        accent: '#EF4444',
+        iconName: 'soccer-field',
+        accent: '#EF4444', // Red
+        description: 'สถานะและราคา'
     },
     {
         id: 'customer',
         title: 'จัดการสมาชิก',
-        image: require('../assets/launcher/icon_users.png'),
-        accent: '#F59E0B',
+        iconName: 'account-group',
+        accent: '#F59E0B', // Amber
+        description: 'ข้อมูลลูกค้า'
     },
     {
         id: 'settings',
         title: 'ตั้งค่า',
-        image: require('../assets/launcher/icon_settings.png'),
-        accent: '#64748B',
+        iconName: 'cog',
+        accent: '#64748B', // Slate
+        description: 'ข้อมูลระบบ'
     },
 ];
 
 export const HomeScreen = () => {
+    const { width } = useWindowDimensions();
+    const isMobile = width < 600;
+
     const { user, logout } = useAuth();
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
@@ -181,48 +192,57 @@ export const HomeScreen = () => {
 
     const StickyHeader = () => (
         <View style={styles.stickyHeader}>
-            <View style={styles.topRow}>
+            <View style={[styles.topRow, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 0 }]}>
                 <BusinessSelector
                     businesses={businesses}
                     selectedId={selectedBusinessId}
                     onSelect={handleBusinessSelect}
-                    containerStyle={styles.businessSelectorContainer}
+                    containerStyle={isMobile ? { width: '100%' } : styles.businessSelectorContainer}
                 />
-                {/* QR Scanner Button */}
-                <TouchableOpacity style={styles.scannerButton} onPress={() => setShowQRScanner(true)}>
-                    <MaterialCommunityIcons name="qrcode-scan" size={24} color={colors.primary[600]} />
-                </TouchableOpacity>
 
-                {/* Notification Button */}
-                {(() => {
-                    const hasUnread = unreadCount > 0 || notifications.some(n => !n.isRead);
-                    const displayCount = unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : notifications.filter(n => !n.isRead).length;
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: isMobile ? 'flex-end' : 'flex-start',
+                    gap: 8,
+                    marginTop: isMobile ? 12 : 0,
+                    alignItems: 'center'
+                }}>
+                    {/* QR Scanner Button */}
+                    <TouchableOpacity style={styles.scannerButton} onPress={() => setShowQRScanner(true)}>
+                        <MaterialCommunityIcons name="qrcode-scan" size={24} color={colors.primary[600]} />
+                    </TouchableOpacity>
 
-                    return (
-                        <TouchableOpacity
-                            style={[
-                                styles.notificationButton,
-                                hasUnread && styles.notificationButtonActive
-                            ]}
-                            onPress={() => setShowNotifications(true)}
-                        >
-                            <MaterialCommunityIcons
-                                name={hasUnread ? "bell-ring" : "bell-outline"}
-                                size={24}
-                                color={hasUnread ? "#fff" : colors.neutral[600]}
-                            />
-                            {hasUnread && (
-                                <View style={styles.badgeOnRed}>
-                                    <Text style={styles.badgeTextOnRed}>{displayCount}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    );
-                })()}
+                    {/* Notification Button */}
+                    {(() => {
+                        const hasUnread = unreadCount > 0 || notifications.some(n => !n.isRead);
+                        const displayCount = unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : notifications.filter(n => !n.isRead).length;
 
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <MaterialCommunityIcons name="logout" size={24} color={colors.neutral[500]} />
-                </TouchableOpacity>
+                        return (
+                            <TouchableOpacity
+                                style={[
+                                    styles.notificationButton,
+                                    hasUnread && styles.notificationButtonActive
+                                ]}
+                                onPress={() => setShowNotifications(true)}
+                            >
+                                <MaterialCommunityIcons
+                                    name={hasUnread ? "bell-ring" : "bell-outline"}
+                                    size={24}
+                                    color={hasUnread ? "#fff" : colors.neutral[600]}
+                                />
+                                {hasUnread && (
+                                    <View style={styles.badgeOnRed}>
+                                        <Text style={styles.badgeTextOnRed}>{displayCount}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })()}
+
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <MaterialCommunityIcons name="logout" size={24} color={colors.neutral[500]} />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -230,7 +250,7 @@ export const HomeScreen = () => {
     const renderLauncherItem = (item: typeof MENU_ITEMS[0]) => (
         <TouchableOpacity
             key={item.id}
-            style={styles.launcherCard}
+            style={styles.appIconWrapper}
             activeOpacity={0.7}
             onPress={() => {
                 if (item.id === 'booking') setActiveTab('booking');
@@ -241,31 +261,35 @@ export const HomeScreen = () => {
                 else if (item.id === 'settings') setActiveTab('settings');
             }}
         >
-            <View style={styles.imageContainer}>
-                <Image source={item.image} style={styles.launcherImage} resizeMode="contain" />
+            <View style={[styles.appIcon, { backgroundColor: item.accent }]}>
+                <MaterialCommunityIcons name={item.iconName} size={32} color="#FFFFFF" />
             </View>
-            <Text style={styles.launcherLabel}>{item.title}</Text>
+            <Text style={styles.appLabel} numberOfLines={1}>{item.title}</Text>
         </TouchableOpacity>
     );
 
     const renderOverview = () => (
         <View style={styles.launcherContainer}>
-            <ScrollView contentContainerStyle={styles.launcherContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={styles.launcherContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header Section - Minimal */}
                 <View style={styles.launcherHeader}>
-                    <Text style={styles.welcomeText}>สวัสดีครับ,</Text>
-                    <Text style={styles.ownerName}>{user?.username || 'Owner'}</Text>
+                    <View>
+                        <Text style={styles.dateText}>
+                            {new Date().toLocaleDateString('th-TH', {
+                                day: 'numeric',
+                                month: 'long',
+                                weekday: 'long'
+                            })}
+                        </Text>
+                        <Text style={styles.welcomeText}>สวัสดี, {user?.username || 'Owner'}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.launcherGrid}>
                     {MENU_ITEMS.map(renderLauncherItem)}
-                </View>
-
-                {/* Bottom Status Card */}
-                <View style={styles.statusFooter}>
-                    <View style={styles.statusCard}>
-                        <View style={styles.statusIndicator} />
-                        <Text style={styles.statusText}>ระบบจองสนามของคุณ พร้อมใช้งานปกติ</Text>
-                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -290,7 +314,11 @@ export const HomeScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <ImageBackground
+            source={require('../../assets/home_bg.png')}
+            style={styles.container}
+            resizeMode="cover"
+        >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
             <DashboardLayout
@@ -321,14 +349,14 @@ export const HomeScreen = () => {
                 loading={loadingNotifications}
                 onNotificationClick={handleNotificationClick}
             />
-        </View>
+        </ImageBackground>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        // backgroundColor: '#F3F4F6' - Removed to use ImageBackground
     },
     safeArea: {
         flex: 1,
@@ -338,7 +366,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         paddingLeft: 10,
         paddingRight: spacing.lg,
-        paddingTop: 0,
+        paddingTop: 12,
         paddingBottom: 8,
         zIndex: 10,
         borderBottomWidth: 0,
@@ -352,35 +380,52 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     logoutButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        width: 54,
+        height: 54,
+        borderRadius: 20,
+        backgroundColor: 'rgba(219, 234, 254, 0.9)', // Light blue interval
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(191, 219, 254, 0.6)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     scannerButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        width: 54,
+        height: 54,
+        borderRadius: 20,
+        backgroundColor: 'rgba(219, 234, 254, 0.9)', // Light blue interval
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: 'rgba(191, 219, 254, 0.6)',
+        marginRight: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     notificationButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
-        backgroundColor: '#fff',
+        width: 54,
+        height: 54,
+        borderRadius: 20,
+        backgroundColor: 'rgba(219, 234, 254, 0.9)', // Light blue interval
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: colors.neutral[200],
+        borderColor: 'rgba(191, 219, 254, 0.6)',
         position: 'relative',
+        marginRight: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     notificationButtonActive: {
         backgroundColor: colors.error,
@@ -407,126 +452,76 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: 'Kanit-Bold',
     },
-    badge: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        backgroundColor: colors.error[500],
-        borderRadius: 10,
-        minWidth: 20,
-        height: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-        borderWidth: 2,
-        borderColor: '#fff',
-        zIndex: 10,
-        elevation: 5,
-    },
-    badgeText: {
-        color: '#fff',
-        fontSize: 10,
-        fontFamily: 'Kanit-Bold',
-    },
     launcherContainer: {
         flex: 1,
         backgroundColor: 'transparent',
     },
     launcherContent: {
         flexGrow: 1,
-        padding: 24, // Reduced overall padding
-        paddingLeft: 10, // Explicitly reduce left padding
-        justifyContent: 'center',
+        padding: 24,
+        paddingTop: 40,
     },
     launcherHeader: {
-        marginBottom: 40,
-    },
-    welcomeText: {
-        fontFamily: 'Kanit-Regular',
-        fontSize: 26,
-        color: colors.neutral[500],
-    },
-    ownerName: {
-        fontFamily: 'Kanit-Bold',
-        fontSize: 52,
-        color: colors.neutral[900],
-        marginTop: -5,
-    },
-    launcherGrid: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        gap: 16, // Reduced gap
-        paddingHorizontal: 10, // Reduced padding
-    },
-    launcherCard: {
-        width: '45%', // Change to 2 columns for mobile portrait
-        aspectRatio: 1.1, // Slightly taller
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        borderRadius: 20,
-        padding: 12,
-        // Soft Claymorphism shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 4,
+        marginBottom: 32,
+        padding: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)', // Soft white glass
+        borderRadius: 28,
+        marginHorizontal: 4,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.8)',
-    },
-    imageContainer: {
-        width: '100%',
-        height: '65%', // Reduced height from 80% to give text space
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    launcherImage: {
-        width: '70%', // Reduced image size
-        height: '70%',
-        borderRadius: 16,
-    },
-    vectorIconWrapper: {
-        width: '100%',
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    launcherLabel: {
-        fontFamily: 'Kanit-SemiBold',
-        fontSize: 16, // Keep readable size
-        color: colors.neutral[700],
-        marginTop: 8,
-        textAlign: 'center',
-    },
-    statusFooter: {
-        marginTop: 40,
-        alignItems: 'center',
-    },
-    statusCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.white,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 24,
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
-        elevation: 2,
-        gap: 12,
+        elevation: 4,
     },
-    statusIndicator: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#10B981',
-    },
-    statusText: {
+    dateText: {
         fontFamily: 'Kanit-Medium',
-        fontSize: 15,
+        fontSize: 14,
         color: colors.neutral[500],
+        marginBottom: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    welcomeText: {
+        fontFamily: 'Kanit-Bold',
+        fontSize: 32,
+        color: colors.neutral[900],
+    },
+    launcherGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start', // Align left for grid
+        marginHorizontal: -8, // Negative margin to offset padding
+    },
+    appIconWrapper: {
+        width: '33.33%', // 3 columns
+        alignItems: 'center',
+        marginBottom: 32,
+        paddingHorizontal: 8,
+    },
+    appIcon: {
+        width: 68,
+        height: 68,
+        borderRadius: 18, // Apple-style squircle radius
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    appLabel: {
+        fontFamily: 'Kanit-Medium',
+        fontSize: 13,
+        color: colors.neutral[800],
+        textAlign: 'center',
+    },
+    statusFooter: {
+        marginTop: 'auto', // Push to bottom if space permits
+        alignItems: 'center',
+        paddingBottom: 20,
     },
 });

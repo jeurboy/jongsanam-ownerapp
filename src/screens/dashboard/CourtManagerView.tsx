@@ -11,6 +11,7 @@ import {
     TextInput,
     Alert,
     ScrollView,
+    useWindowDimensions,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors, fonts, spacing, borderRadius, fontSize } from '../../theme/tokens';
@@ -75,6 +76,13 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
     const [selectedSport, setSelectedSport] = useState<string>('ALL');
     const [availableSports, setAvailableSports] = useState<string[]>([]);
     const [managementMode, setManagementMode] = useState<'SLOT' | 'CAPACITY'>('SLOT');
+
+    const { width, height } = useWindowDimensions();
+    const isLandscape = width > height;
+    // iPhone/Mobile Portrait (< 600) -> 1 column
+    // Tablet Portrait -> 2 columns
+    // Landscape -> 3 columns
+    const numColumns = isLandscape ? 3 : (width < 600 ? 1 : 2);
 
     // Edit Modal State
     const [editModalVisible, setEditModalVisible] = useState(false);
@@ -299,8 +307,9 @@ export const CourtManagerView = ({ businessId }: CourtManagerViewProps) => {
                     renderItem={renderCourtItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
-                    numColumns={2}
-                    columnWrapperStyle={styles.columnWrapper}
+                    key={numColumns} // Force re-render when columns change
+                    numColumns={numColumns}
+                    columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary.main]} />
                     }
@@ -656,7 +665,7 @@ const styles = StyleSheet.create({
         fontSize: fontSize.md,
     },
     saveButton: {
-        backgroundColor: colors.primary.main,
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep Blue
     },
     saveButtonText: {
         fontFamily: fonts.semiBold,

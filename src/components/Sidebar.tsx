@@ -15,7 +15,7 @@ const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
     { id: 'overview', icon: 'home', label: 'หน้าหลัก' },
     { id: 'dashboard', icon: 'chart-box', label: 'ภาพรวม' },
     { id: 'booking', icon: 'calendar-clock', label: 'จัดการการจอง' },
-    { id: 'courts', icon: 'stadium-variant', label: 'จัดการสนาม' },
+    { id: 'courts', icon: 'soccer-field', label: 'จัดการสนาม' },
     { id: 'users', icon: 'account-group', label: 'จัดการสมาชิก' },
     { id: 'settings', icon: 'cog-outline', label: 'ตั้งค่า' },
 ];
@@ -35,7 +35,7 @@ export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps)
             }
         ]}>
             <Image
-                source={require('../assets/jongsanam_logo_light.png')}
+                source={require('../../assets/icon.png')}
                 style={[styles.logo, { width: sidebarWidth - 20, height: sidebarWidth - 20 }]}
                 resizeMode="contain"
             />
@@ -55,7 +55,7 @@ export const Sidebar = ({ activeTab, onTabChange, isTransparent }: SidebarProps)
                             <MaterialCommunityIcons
                                 name={isActive ? item.icon.replace('-outline', '') : (item.icon.includes('-outline') ? item.icon : `${item.icon}`)}
                                 size={isPortrait ? 24 : 28}
-                                color={isActive ? colors.primary.main : colors.neutral[400]}
+                                color={isActive ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)'}
                             />
                             <Text style={[
                                 styles.menuLabel,
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
         height: '100%',
         alignItems: 'center',
         paddingHorizontal: 8,
+        paddingTop: 60,
     },
     logo: {
         width: 80,
@@ -87,46 +88,47 @@ const styles = StyleSheet.create({
     },
     glassNav: {
         width: '100%',
-        backgroundColor: 'rgba(255, 255, 255, 0.45)', // Even more transparent
-        borderRadius: 18, // Reduced radius
-        paddingVertical: 10, // Reduced padding
-        gap: 8, // Reduced gap
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'rgba(2, 38, 99, 0.75)', // Deep rich blue, less gray
+        borderRadius: 24,
+        paddingVertical: 12,
+        gap: 8,
         marginTop: 10,
-        // Shadow for the glass card
+        // Shadow
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     menuItem: {
-        width: '80%', // Slightly reduce width to fit nicely
-        aspectRatio: 1, // Force square shape
-        borderRadius: 14, // Less rounded for square look
+        width: '80%',
+        aspectRatio: 1,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
-        // paddingVertical is removed because aspectRatio handles height
     },
     menuItemActive: {
-        backgroundColor: colors.white,
-        shadowColor: colors.primary.main,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)', // Light glass highlight
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
     },
     menuLabel: {
         fontFamily: 'Kanit-Regular',
         fontSize: 10,
-        color: colors.neutral[600],
-        marginTop: 2, // Reduce margin to fit in square
+        color: 'rgba(255, 255, 255, 0.7)', // Light text for dark bg
+        marginTop: 4,
         textAlign: 'center',
     },
     menuLabelActive: {
         fontFamily: 'Kanit-SemiBold',
-        color: colors.primary.main,
+        color: '#FFFFFF', // Bright white for active
     },
 });

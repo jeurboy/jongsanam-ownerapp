@@ -13,6 +13,7 @@ import {
     useWindowDimensions,
     StatusBar,
     Linking,
+    Image,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, fontSize, borderRadius, fonts } from '../theme/tokens';
@@ -77,9 +78,11 @@ export const LoginScreen = () => {
                 <View style={styles.centerContainer}>
                     {/* Logo Section */}
                     <View style={styles.logoSection}>
-                        <View style={styles.logo}>
-                            <Text style={styles.logoText}>JS</Text>
-                        </View>
+                        <Image
+                            source={require('../../assets/icon.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.brandName}>JongSanam</Text>
                         <Text style={styles.tagline}>ระบบจัดการสนามกีฬา</Text>
                     </View>
@@ -205,24 +208,10 @@ const styles = StyleSheet.create({
         marginBottom: responsive.spacing.xl,
     },
     logo: {
-        width: 100, // Increased size
-        height: 100, // Increased size
-        backgroundColor: colors.white,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: 120, // Increased size for better visibility
+        height: 120, // Increased size
         marginBottom: responsive.spacing.md,
-        shadowColor: colors.black,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    logoText: {
-        fontSize: 52, // Increased size
-        fontFamily: fonts.bold,
-        color: colors.primary.main,
-        letterSpacing: -1,
+        borderRadius: 24, // Matches icon curvature
     },
     brandName: {
         fontSize: 20,

@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
         color: colors.neutral[900],
     },
     button: {
-        backgroundColor: colors.primary.main,
+        backgroundColor: 'rgba(2, 38, 99, 0.9)', // Deep Blue
         borderRadius: borderRadius.lg,
         height: 50,
         flexDirection: 'row',
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: spacing.sm,
         marginTop: spacing.sm,
-        shadowColor: colors.primary.main,
+        shadowColor: 'rgba(2, 38, 99, 0.9)',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

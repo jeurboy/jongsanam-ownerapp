@@ -1,8 +1,8 @@
 export const colors = {
     primary: {
-        main: '#2563EB',      // blue-600
+        main: '#1E40AF',      // blue-800
         light: '#3B82F6',     // blue-500
-        dark: '#1E40AF',      // blue-700
+        dark: '#1E3A8A',      // blue-900
         // Numeric scale for compatibility
         50: '#EFF6FF',        // blue-50
         100: '#DBEAFE',       // blue-100
