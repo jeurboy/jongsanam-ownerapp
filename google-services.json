@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "432016821874",
+    "project_id": "jongsanam-f030a",
+    "storage_bucket": "jongsanam-f030a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:432016821874:android:90de45b2edb3de792dbceb",
+        "android_client_info": {
+          "package_name": "com.jongsanam.ownerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVvjEQuAZqxMeSfWS2rAUhjktebPrlJwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { authService } from '../services/auth.service';
 import { apiService } from '../services/api.service';
 import { AuthState, LoginCredentials } from '../types/auth';
+import { pushNotificationService } from '../services/pushNotification.service';
 
 interface AuthContextType extends AuthState {
     login: (credentials: LoginCredentials) => Promise<void>;
@@ -56,6 +57,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         isLoading: false,
                         isAuthenticated: true,
                     });
+                    // Register for push notifications
+                    pushNotificationService.registerForPushNotificationsAsync();
                 } else {
                     // Refresh failed - clear auth state
                     setState({
@@ -108,6 +111,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 isAuthenticated: true,
             });
             console.log('[AuthContext] State updated successfully');
+
+            // Register for push notifications
+            pushNotificationService.registerForPushNotificationsAsync();
         } catch (error) {
             console.error('[AuthContext] Login error:', error);
             // Don't need to set isLoading: false since we never set it to true
