@@ -16,10 +16,24 @@ export const mergeConsecutiveBookings = (bookings: BookingLookupResult[]): Booki
     console.log('=== MERGE START ===');
     console.log('Input bookings:', bookings.length);
 
-    // Sort by facility and time
+    // Group statuses for sorting: active bookings first, then cancelled/no-show
+    const getStatusGroup = (status: string): number => {
+        // Active statuses (PENDING, CONFIRMED, COMPLETED) = 0
+        // Cancelled statuses (CANCELLED, NO_SHOW, EXPIRED) = 1
+        const cancelledStatuses = ['CANCELLED', 'NO_SHOW', 'EXPIRED'];
+        return cancelledStatuses.includes(status) ? 1 : 0;
+    };
+
+    // Sort by facility, then status group, then time
+    // This ensures overlapping bookings with same status are grouped together
     const sorted = [...bookings].sort((a, b) => {
         const facilityCompare = (a.facility?.id || '').localeCompare(b.facility?.id || '');
         if (facilityCompare !== 0) return facilityCompare;
+
+        // Sort by status group (active first, cancelled second)
+        const statusGroupCompare = getStatusGroup(a.status) - getStatusGroup(b.status);
+        if (statusGroupCompare !== 0) return statusGroupCompare;
+
         return new Date(a.timeSlotStart).getTime() - new Date(b.timeSlotStart).getTime();
     });
 
