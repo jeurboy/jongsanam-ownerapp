@@ -307,6 +307,52 @@ export const bookingService = {
         return !response.error;
     },
 
+    /**
+     * Bulk mark bookings as paid with single consolidated notification
+     */
+    async bulkMarkAsPaid(ids: string[]): Promise<{ success: boolean; data: any }> {
+        const response = await apiService.post<{
+            success: boolean,
+            data: {
+                successCount: number;
+                failedIds: string[];
+                updatedBookings: any[];
+            }
+        }>('/api/owner/bookings/bulk-payment', {
+            bookingIds: ids
+        });
+
+        if (response.error) {
+            console.error('Error bulk marking as paid:', response.error);
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false, data: null };
+    },
+
+    /**
+     * Bulk unmark bookings as paid
+     */
+    async bulkUnmarkAsPaid(ids: string[]): Promise<{ success: boolean; data: any }> {
+        const response = await apiService.delete<{
+            success: boolean,
+            data: {
+                successCount: number;
+                failedIds: string[];
+                updatedBookings: any[];
+            }
+        }>('/api/owner/bookings/bulk-payment', {
+            bookingIds: ids
+        });
+
+        if (response.error) {
+            console.error('Error bulk unmarking as paid:', response.error);
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false, data: null };
+    },
+
     async bulkUpdateStatus(
         ids: string[],
         status: 'PENDING' | 'CONFIRMED' | 'NO_SHOW' | 'CANCELLED' | 'COMPLETED',

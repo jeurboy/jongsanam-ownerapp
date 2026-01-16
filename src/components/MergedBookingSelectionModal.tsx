@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, Platform, ActionSheetIOS } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { format, parseISO } from 'date-fns';
@@ -32,6 +32,16 @@ export const MergedBookingSelectionModal: React.FC<MergedBookingSelectionModalPr
     onBulkStatusChange
 }) => {
     const [selectedStatus, setSelectedStatus] = useState(STATUS_OPTIONS[0]);
+
+    // Update selectedStatus when mergedBooking changes or modal opens
+    useEffect(() => {
+        if (mergedBooking?.status) {
+            const matchedStatus = STATUS_OPTIONS.find(opt => opt.value === mergedBooking.status);
+            if (matchedStatus) {
+                setSelectedStatus(matchedStatus);
+            }
+        }
+    }, [mergedBooking?.status, visible]);
 
     if (!mergedBooking) return null;
 

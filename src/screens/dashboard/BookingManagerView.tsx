@@ -747,18 +747,21 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     console.error('Bulk update failed', e);
                 }
             } else {
-                // Fallback to loop for actions not supported by bulk API (Payment only)
-                for (const id of ids) {
-                    let success = false;
-                    switch (action) {
-                        case 'markPaid':
-                            success = await bookingService.markAsPaid(id);
-                            break;
-                        case 'markUnpaid':
-                            success = await bookingService.unmarkAsPaid(id);
-                            break;
+                // Use Bulk API for Payment actions (sends single notification per user)
+                try {
+                    if (action === 'markPaid') {
+                        const res = await bookingService.bulkMarkAsPaid(ids);
+                        if (res && res.success) {
+                            successCount = res.data?.successCount || 0;
+                        }
+                    } else if (action === 'markUnpaid') {
+                        const res = await bookingService.bulkUnmarkAsPaid(ids);
+                        if (res && res.success) {
+                            successCount = res.data?.successCount || 0;
+                        }
                     }
-                    if (success) successCount++;
+                } catch (e) {
+                    console.error('Bulk payment update failed', e);
                 }
             }
 

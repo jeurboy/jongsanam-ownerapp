@@ -371,27 +371,31 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
         if (pendingBookings.length === 0) return;
 
-        // Count total individual bookings (including merged)
-        const totalIndividualBookings = pendingBookings.reduce((sum, b) => {
-            const ids = (b as any).mergedBookingIds || [b.id];
-            return sum + ids.length;
-        }, 0);
+        // Collect all individual booking IDs (including merged)
+        const allBookingIds: string[] = [];
+        for (const booking of pendingBookings) {
+            const ids = (booking as any).mergedBookingIds || [booking.id];
+            allBookingIds.push(...ids);
+        }
 
         Alert.alert(
             'ยืนยัน Check-in ทั้งหมด',
-            `คุณต้องการ Check-in ${totalIndividualBookings} รายการใช่หรือไม่?`,
+            `คุณต้องการ Check-in ${allBookingIds.length} รายการใช่หรือไม่?`,
             [
                 { text: 'ยกเลิก', style: 'cancel' },
                 {
                     text: 'ยืนยัน',
                     onPress: async () => {
                         try {
-                            // Check-in all pending bookings (including merged ones)
-                            for (const booking of pendingBookings) {
-                                const bookingIds = (booking as any).mergedBookingIds || [booking.id];
-                                await processStatusUpdate(booking.id, 'check-in', bookingIds, false);
-                            }
-                            Alert.alert('สำเร็จ!', `Check-in ${totalIndividualBookings} รายการเรียบร้อยแล้ว`);
+                            // Use bulk API for check-in (sends single notification)
+                            await bookingService.bulkUpdateStatus(allBookingIds, 'COMPLETED');
+
+                            // Update all booking statuses in state
+                            setBookingResults(prev => prev.map(b =>
+                                pendingBookings.find(pb => pb.id === b.id) ? { ...b, status: 'COMPLETED' } : b
+                            ));
+
+                            Alert.alert('สำเร็จ!', `Check-in ${allBookingIds.length} รายการเรียบร้อยแล้ว`);
                         } catch (err: any) {
                             Alert.alert('เกิดข้อผิดพลาด', err.message);
                         }
@@ -406,15 +410,16 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
 
         if (pendingBookings.length === 0) return;
 
-        // Count total individual bookings (including merged)
-        const totalIndividualBookings = pendingBookings.reduce((sum, b) => {
-            const ids = (b as any).mergedBookingIds || [b.id];
-            return sum + ids.length;
-        }, 0);
+        // Collect all individual booking IDs (including merged)
+        const allBookingIds: string[] = [];
+        for (const booking of pendingBookings) {
+            const ids = (booking as any).mergedBookingIds || [booking.id];
+            allBookingIds.push(...ids);
+        }
 
         Alert.alert(
             'ยืนยัน No-Show ทั้งหมด',
-            `คุณต้องการทำเครื่องหมาย No-Show ${totalIndividualBookings} รายการใช่หรือไม่?`,
+            `คุณต้องการทำเครื่องหมาย No-Show ${allBookingIds.length} รายการใช่หรือไม่?`,
             [
                 { text: 'ยกเลิก', style: 'cancel' },
                 {
@@ -422,18 +427,15 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Mark all pending bookings as no-show (including merged ones)
-                            for (const booking of pendingBookings) {
-                                const bookingIds = (booking as any).mergedBookingIds || [booking.id];
-                                for (const id of bookingIds) {
-                                    await bookingService.markNoShow(id);
-                                }
-                            }
-                            // Update all booking statuses
+                            // Use bulk API for no-show (sends single notification)
+                            await bookingService.bulkUpdateStatus(allBookingIds, 'NO_SHOW', 'ลูกค้าไม่มาใช้บริการ');
+
+                            // Update all booking statuses in state
                             setBookingResults(prev => prev.map(b =>
                                 pendingBookings.find(pb => pb.id === b.id) ? { ...b, status: 'NO_SHOW' } : b
                             ));
-                            Alert.alert('สำเร็จ!', `ทำเครื่องหมาย No-Show ${totalIndividualBookings} รายการเรียบร้อยแล้ว`);
+
+                            Alert.alert('สำเร็จ!', `ทำเครื่องหมาย No-Show ${allBookingIds.length} รายการเรียบร้อยแล้ว`);
                         } catch (err: any) {
                             Alert.alert('เกิดข้อผิดพลาด', err.message);
                         }
@@ -459,12 +461,11 @@ export const QRScannerScreen: React.FC<Props> = ({ visible, onClose, businessId 
         const bookingIds = (booking as any).mergedBookingIds || [bookingId];
 
         try {
-            for (const id of bookingIds) {
-                if (newIsPaid) {
-                    await bookingService.markAsPaid(id);
-                } else {
-                    await bookingService.unmarkAsPaid(id);
-                }
+            // Use bulk API for payment (sends single notification)
+            if (newIsPaid) {
+                await bookingService.bulkMarkAsPaid(bookingIds);
+            } else {
+                await bookingService.bulkUnmarkAsPaid(bookingIds);
             }
         } catch (err: any) {
             // Revert on error

@@ -149,7 +149,7 @@ export const apiService = {
         return this.request<T>(endpoint, { ...options, method: 'PATCH', body });
     },
 
-    async delete<T = any>(endpoint: string, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
-        return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    async delete<T = any>(endpoint: string, body?: any, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+        return this.request<T>(endpoint, { ...options, method: 'DELETE', body });
     },
 };
