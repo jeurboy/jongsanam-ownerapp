@@ -305,5 +305,63 @@ export const bookingService = {
     async unmarkAsPaid(id: string): Promise<boolean> {
         const response = await apiService.delete(`/api/owner/bookings/${id}/payment`);
         return !response.error;
+    },
+
+    async bulkUpdateStatus(
+        ids: string[],
+        status: 'PENDING' | 'CONFIRMED' | 'NO_SHOW' | 'CANCELLED' | 'COMPLETED',
+        reason?: string
+    ): Promise<{ success: boolean; data: any }> {
+        const response = await apiService.post<{
+            success: boolean,
+            data: {
+                successCount: number;
+                failedIds: string[];
+                updatedBookings: any[];
+            }
+        }>('/api/owner/bookings/bulk', {
+            bookingIds: ids,
+            status,
+            reason
+        });
+
+        if (response.error) {
+            console.error('Error bulk updating bookings:', response.error);
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false, data: null };
+    },
+
+    async bulkUpdateDetails(
+        updates: Array<{
+            id: string;
+            date?: string;
+            startTime?: string;
+            endTime?: string;
+            courtId?: string;
+            customerName?: string;
+            customerPhone?: string;
+            price?: number;
+            status?: string;
+        }>
+    ): Promise<{ success: boolean; data: any }> {
+        const response = await apiService.post<{
+            success: boolean,
+            data: {
+                successCount: number;
+                failedIds: string[];
+                updatedBookings: any[];
+            }
+        }>('/api/owner/bookings/bulk-update', {
+            updates
+        });
+
+        if (response.error) {
+            console.error('Error bulk updating booking details:', response.error);
+            throw new Error(response.error);
+        }
+
+        return response.data || { success: false, data: null };
     }
 };

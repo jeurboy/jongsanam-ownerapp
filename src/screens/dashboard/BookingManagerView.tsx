@@ -13,6 +13,7 @@ import { th } from 'date-fns/locale';
 import { translateBookingStatus } from '../../utils/statusTranslation';
 import { mergeConsecutiveBookings } from '../../utils/bookingUtils';
 import { BookingLookupResult } from '../../types/booking';
+import { MergedBookingSelectionModal } from '../../components/MergedBookingSelectionModal';
 
 // Constants for table layout
 const TIME_COL_WIDTH = 60;
@@ -116,7 +117,13 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     const [courts, setCourts] = useState<Court[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedSport, setSelectedSport] = useState<string>('ALL'); // New State
+    const [selectedSport, setSelectedSport] = useState<string>('ALL');
+
+    // Merged Modal State
+    const [mergedModalVisible, setMergedModalVisible] = useState(false);
+    const [selectedMergedBooking, setSelectedMergedBooking] = useState<MergedBooking | null>(null);
+
+    const horizontalScrollRef = useRef<ScrollView>(null);
     const [capacitySearchQuery, setCapacitySearchQuery] = useState(''); // Search state for capacity bookings
 
     // Refs for synchronized scrolling
@@ -588,33 +595,46 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     ? Math.round((totalPrice / idsToUpdate.length) * 100) / 100
                     : totalPrice;
 
-                for (const id of idsToUpdate) {
-                    // For bulk edit, don't send time fields as each booking has different times
-                    const updatePayload = isBulkEdit ? {
+                // Prepare updates for bulk API
+                const updates = idsToUpdate.map(id => {
+                    const basePayload = isBulkEdit ? {
+                        id,
                         customerName: newBooking.customerName,
                         customerPhone: newBooking.customerPhone,
                         price: pricePerSlot,
-                        status: newBooking.status
+                        status: newBooking.status,
+                        // For bulk, don't include time/date as they are specific to each slot
                     } : {
+                        id,
                         date: newBooking.date,
                         startTime: newBooking.startTime,
                         endTime: newBooking.endTime,
                         customerName: newBooking.customerName,
                         customerPhone: newBooking.customerPhone,
                         price: totalPrice,
-                        status: newBooking.status
+                        status: newBooking.status,
                     };
 
-                    // Use appropriate update function based on booking type
+                    // Handle courtId mapping
+                    // Logic: 
+                    // 1. If bulk edit (non-capacity), courtId is undefined (original line 615)
+                    // 2. If capacity, facilityId is sent (original line 612). In bulk API we map this to courtId.
+                    // 3. If single edit (non-capacity), courtId is sent.
+
+                    let courtId = undefined;
                     if (editingIsCapacity) {
-                        await bookingService.updateCapacityBooking(id, {
-                            ...updatePayload,
-                            facilityId: newBooking.courtId
-                        });
-                    } else {
-                        await bookingService.updateBooking(id, { ...updatePayload, courtId: isBulkEdit ? undefined : newBooking.courtId });
+                        courtId = newBooking.courtId;
+                    } else if (!isBulkEdit) {
+                        courtId = newBooking.courtId;
                     }
-                }
+
+                    return {
+                        ...basePayload,
+                        courtId
+                    };
+                });
+
+                await bookingService.bulkUpdateDetails(updates);
 
                 if (idsToUpdate.length > 1) {
                     Alert.alert('สำเร็จ', `แก้ไขการจอง ${idsToUpdate.length} รายการเรียบร้อยแล้ว`);
@@ -695,35 +715,51 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
     };
 
     // Execute action for single or multiple bookings
-    const executeBulkAction = async (action: 'confirm' | 'cancel' | 'noshow' | 'completed' | 'markPaid' | 'markUnpaid', targetIds?: string[]) => {
+    const executeBulkAction = async (action: 'pending' | 'confirm' | 'cancel' | 'noshow' | 'completed' | 'markPaid' | 'markUnpaid', targetIds?: string[]) => {
         const ids = targetIds || [selectedBooking!.id];
 
         setLoadingDetail(true);
         try {
             let successCount = 0;
-            for (const id of ids) {
-                let success = false;
-                switch (action) {
-                    case 'confirm':
-                        success = await bookingService.confirmBooking(id);
-                        break;
-                    case 'cancel':
-                        success = await bookingService.cancelBooking(id, "ยกเลิกโดยเจ้าของสนาม");
-                        break;
-                    case 'noshow':
-                        success = await bookingService.markBookingNoShow(id, "ลูกค้าไม่มาใช้บริการ");
-                        break;
-                    case 'completed':
-                        success = await bookingService.markBookingCompleted(id);
-                        break;
-                    case 'markPaid':
-                        success = await bookingService.markAsPaid(id);
-                        break;
-                    case 'markUnpaid':
-                        success = await bookingService.unmarkAsPaid(id);
-                        break;
+
+            // Check if action is supported by bulk API
+            const bulkMap: Record<string, 'PENDING' | 'CONFIRMED' | 'NO_SHOW' | 'CANCELLED' | 'COMPLETED'> = {
+                'pending': 'PENDING',
+                'confirm': 'CONFIRMED',
+                'cancel': 'CANCELLED',
+                'completed': 'COMPLETED',
+                'noshow': 'NO_SHOW'
+            };
+
+            const bulkStatus = bulkMap[action];
+
+            if (bulkStatus) {
+                // Use Bulk API for supported actions (Confirm, Cancel, Completed, No-Show)
+                // This ensures notifications are sent via the bulk endpoint even for single records
+                const reason = action === 'cancel' ? "ยกเลิกโดยเจ้าของสนาม" :
+                    action === 'noshow' ? "ลูกค้าไม่มาใช้บริการ" : undefined;
+                try {
+                    const res = await bookingService.bulkUpdateStatus(ids, bulkStatus, reason);
+                    if (res && res.success) {
+                        successCount = res.data?.successCount || 0;
+                    }
+                } catch (e) {
+                    console.error('Bulk update failed', e);
                 }
-                if (success) successCount++;
+            } else {
+                // Fallback to loop for actions not supported by bulk API (Payment only)
+                for (const id of ids) {
+                    let success = false;
+                    switch (action) {
+                        case 'markPaid':
+                            success = await bookingService.markAsPaid(id);
+                            break;
+                        case 'markUnpaid':
+                            success = await bookingService.unmarkAsPaid(id);
+                            break;
+                    }
+                    if (success) successCount++;
+                }
             }
 
             if (successCount === ids.length) {
@@ -735,7 +771,6 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                 Alert.alert('สำเร็จ', ids.length > 1 ? `${actionText} ${successCount} รายการเรียบร้อยแล้ว` : `${actionText}เรียบร้อยแล้ว`);
 
                 // Keep modal open and refresh data
-                // setModalVisible(false); // Removed to keep modal open
                 loadData();
 
                 // If selected booking was updated, refresh it
@@ -1179,24 +1214,9 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                                                             ]}
                                                                             onPress={() => {
                                                                                 console.log('[MergedBooking] Pressed:', mergedBooking.id, 'ids:', mergedBooking.ids);
-                                                                                // If multiple slots, show picker to select which slot to view
-                                                                                if (mergedBooking.bookings.length > 1) {
-                                                                                    const totalPrice = mergedBooking.bookings.reduce((sum: number, b: any) => sum + Number(b.totalPrice || 0), 0);
-                                                                                    const options = mergedBooking.bookings.map((b: any) => ({
-                                                                                        text: `${format(parseISO(b.timeSlotStart), 'HH:mm')} - ${format(parseISO(b.timeSlotEnd), 'HH:mm')} (฿${Number(b.totalPrice || 0).toLocaleString()})`,
-                                                                                        onPress: () => handleBookingPress(b.id, false, mergedBooking.ids)
-                                                                                    }));
-                                                                                    Alert.alert(
-                                                                                        'เลือกช่วงเวลา',
-                                                                                        `การจองนี้มี ${mergedBooking.bookings.length} ช่วงเวลา • รวม ฿${totalPrice.toLocaleString()}`,
-                                                                                        [
-                                                                                            ...options,
-                                                                                            { text: 'ยกเลิก', style: 'cancel' }
-                                                                                        ]
-                                                                                    );
-                                                                                } else {
-                                                                                    handleBookingPress(mergedBooking.bookings[0].id, false, mergedBooking.ids);
-                                                                                }
+                                                                                // New Logic: Open Custom Modal
+                                                                                setSelectedMergedBooking(mergedBooking);
+                                                                                setMergedModalVisible(true);
                                                                             }}
                                                                             activeOpacity={0.8}
                                                                         >
@@ -1565,59 +1585,6 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                                             <Text style={[styles.editButtonText, windowWidth < 600 && { fontSize: 13 }]}>แก้ไขการจอง</Text>
                                         </TouchableOpacity>
 
-                                        {/* Action Buttons based on Status */}
-                                        <View style={[styles.actionButtonsContainer, windowWidth < 600 && styles.actionButtonsContainerMobile]}>
-                                            {selectedBooking.status === 'PENDING' && (
-                                                <TouchableOpacity
-                                                    style={[styles.actionButton, styles.confirmButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                    onPress={handleConfirmBooking}
-                                                >
-                                                    <MaterialCommunityIcons name="check-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยืนยันการจอง</Text>
-                                                </TouchableOpacity>
-                                            )}
-
-                                            {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
-                                                <>
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.completedButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                        onPress={handleMarkCompleted}
-                                                    >
-                                                        <MaterialCommunityIcons name="account-check" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>{windowWidth < 600 ? 'มาใช้บริการ' : 'ลูกค้ามาใช้บริการแล้ว'}</Text>
-                                                    </TouchableOpacity>
-
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.noShowButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                        onPress={handleMarkNoShow}
-                                                    >
-                                                        <MaterialCommunityIcons name="account-remove" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>No-Show</Text>
-                                                    </TouchableOpacity>
-
-                                                    <TouchableOpacity
-                                                        style={[styles.actionButton, styles.cancelButtonModal, windowWidth < 600 && styles.actionButtonMobile]}
-                                                        onPress={handleCancelBooking}
-                                                    >
-                                                        <MaterialCommunityIcons name="close-circle" size={windowWidth < 600 ? 16 : 20} color={colors.white} />
-                                                        <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile]}>ยกเลิก</Text>
-                                                    </TouchableOpacity>
-                                                </>
-                                            )}
-
-                                            {/* Payment Button - Visible for PENDING, CONFIRMED, COMPLETED */}
-                                            {['PENDING', 'CONFIRMED', 'COMPLETED'].includes(selectedBooking.status) && (
-                                                <TouchableOpacity
-                                                    style={[styles.actionButton, selectedBooking.isPaid ? styles.unpaidButton : styles.paidButton, windowWidth < 600 && styles.actionButtonMobile]}
-                                                    onPress={handleTogglePayment}
-                                                >
-                                                    <MaterialCommunityIcons name={selectedBooking.isPaid ? "cash-refund" : "cash-check"} size={windowWidth < 600 ? 16 : 20} color={selectedBooking.isPaid ? colors.neutral[700] : colors.white} />
-                                                    <Text style={[styles.actionButtonText, windowWidth < 600 && styles.actionButtonTextMobile, selectedBooking.isPaid && { color: colors.neutral[700] }]}>
-                                                        {selectedBooking.isPaid ? (windowWidth < 600 ? 'ยกเลิกชำระ' : 'ยกเลิกการชำระเงิน') : (windowWidth < 600 ? 'ชำระเงิน' : 'บันทึกการชำระเงิน')}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
                                     </View>
                                 </View>
                             </ScrollView>
@@ -2088,7 +2055,53 @@ export const BookingManagerView = ({ businessId }: BookingManagerViewProps) => {
                     </View>
                 </View>
             </Modal >
-        </View >
+            {/* Merged Booking Selection Modal */}
+            <MergedBookingSelectionModal
+                visible={mergedModalVisible}
+                onClose={() => {
+                    setMergedModalVisible(false);
+                    setSelectedMergedBooking(null);
+                }}
+                mergedBooking={selectedMergedBooking}
+                onSelectSlot={(bookingId) => {
+                    // When a slot is selected, close this modal and open the detailed edit view
+                    setMergedModalVisible(false);
+                    // Open view only for this specific slot? Or edit?
+                    // The design implies "Select Slot" -> View/Edit that single slot
+                    handleBookingPress(bookingId, false, selectedMergedBooking?.ids);
+                }}
+                onEdit={() => {
+                    // "Edit" big button -> Treat as "Edit First Slot" but passing all IDs allows the edit modal to handle bulk
+                    if (selectedMergedBooking && selectedMergedBooking.bookings.length > 0) {
+                        setMergedModalVisible(false);
+                        handleBookingPress(selectedMergedBooking.bookings[0].id, false, selectedMergedBooking.ids);
+                    }
+                }}
+                onBulkPayment={() => {
+                    if (selectedMergedBooking) {
+                        // Mark all as paid
+                        executeBulkAction('markPaid', selectedMergedBooking.ids);
+                        setMergedModalVisible(false);
+                    }
+                }}
+                onBulkStatusChange={(status) => {
+                    if (selectedMergedBooking) {
+                        // Map status to action
+                        let action: 'pending' | 'confirm' | 'cancel' | 'completed' | 'noshow' | null = null;
+                        if (status === 'CONFIRMED') action = 'confirm';
+                        else if (status === 'PENDING') action = 'pending';
+                        else if (status === 'CANCELLED') action = 'cancel';
+                        else if (status === 'COMPLETED') action = 'completed';
+                        else if (status === 'NO_SHOW') action = 'noshow';
+
+                        if (action) {
+                            executeBulkAction(action, selectedMergedBooking.ids);
+                            setMergedModalVisible(false);
+                        }
+                    }
+                }}
+            />
+        </View>
     );
 };
 
