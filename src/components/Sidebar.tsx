@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } 
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../theme/tokens';
 
-export type SidebarTab = 'overview' | 'dashboard' | 'booking' | 'courts' | 'users' | 'settings';
+export type SidebarTab = 'overview' | 'dashboard' | 'booking' | 'courts' | 'users' | 'feedback' | 'settings';
 
 interface SidebarProps {
     activeTab: SidebarTab;
@@ -17,6 +17,7 @@ const MENU_ITEMS: { id: SidebarTab; icon: string; label: string }[] = [
     { id: 'booking', icon: 'calendar-clock', label: 'จัดการการจอง' },
     { id: 'courts', icon: 'soccer-field', label: 'จัดการสนาม' },
     { id: 'users', icon: 'account-group', label: 'จัดการสมาชิก' },
+    { id: 'feedback', icon: 'message-text-outline', label: 'ข้อเสนอแนะ' },
     { id: 'settings', icon: 'cog-outline', label: 'ตั้งค่า' },
 ];
 

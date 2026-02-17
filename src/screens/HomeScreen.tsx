@@ -333,7 +333,13 @@ export const HomeScreen = () => {
 
             <DashboardLayout
                 activeTab={activeTab}
-                onTabChange={setActiveTab}
+                onTabChange={(tab) => {
+                    if (tab === 'feedback') {
+                        setShowFeedback(true);
+                    } else {
+                        setActiveTab(tab);
+                    }
+                }}
                 isTransparent={true}
             >
                 <View style={{ flex: 1 }}>
