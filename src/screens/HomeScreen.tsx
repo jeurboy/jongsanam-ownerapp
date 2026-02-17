@@ -28,6 +28,7 @@ import { DashboardView } from './dashboard/DashboardView';
 import { SettingsView } from './dashboard/SettingsView';
 import { QRScannerScreen } from './QRScannerScreen';
 import { NotificationModal } from '../components/NotificationModal';
+import { FeedbackModal } from '../components/FeedbackModal';
 import { Notification, notificationService } from '../services/notification.service';
 
 
@@ -68,6 +69,13 @@ const MENU_ITEMS = [
         description: 'ข้อมูลลูกค้า'
     },
     {
+        id: 'feedback',
+        title: 'ข้อเสนอแนะ',
+        iconName: 'message-text-outline',
+        accent: '#8B5CF6', // Purple
+        description: 'ติดต่อทีมงาน'
+    },
+    {
         id: 'settings',
         title: 'ตั้งค่า',
         iconName: 'cog',
@@ -85,6 +93,7 @@ export const HomeScreen = () => {
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<SidebarTab>('overview');
     const [showQRScanner, setShowQRScanner] = useState(false);
+    const [showFeedback, setShowFeedback] = useState(false);
 
     // Notification State
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -253,7 +262,8 @@ export const HomeScreen = () => {
             style={styles.appIconWrapper}
             activeOpacity={0.7}
             onPress={() => {
-                if (item.id === 'booking') setActiveTab('booking');
+                if (item.id === 'feedback') setShowFeedback(true);
+                else if (item.id === 'booking') setActiveTab('booking');
                 else if (item.id === 'customer') setActiveTab('users');
                 else if (item.id === 'overview') setActiveTab('overview');
                 else if (item.id === 'dashboard') setActiveTab('dashboard');
@@ -337,6 +347,12 @@ export const HomeScreen = () => {
                 visible={showQRScanner}
                 onClose={() => setShowQRScanner(false)}
                 businessId={selectedBusinessId || undefined}
+            />
+
+            {/* Feedback Modal */}
+            <FeedbackModal
+                visible={showFeedback}
+                onClose={() => setShowFeedback(false)}
             />
 
             {/* Notification Modal */}
