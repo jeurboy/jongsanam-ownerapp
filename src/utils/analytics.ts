@@ -2,7 +2,7 @@
 import analytics from '@react-native-firebase/analytics';
 
 /**
- * Analytics Utility for Jong Court Owner App
+ * Analytics Utility for Jong Sanam Owner App
  * Wrapper around Firebase Analytics
  */
 export const Analytics = {

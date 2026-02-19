@@ -57,7 +57,7 @@ open ios/JongSanamOwnerApp.xcworkspace
 ### ขั้นตอนที่ 7: Submit ใน App Store Connect
 
 1. เข้า [App Store Connect](https://appstoreconnect.apple.com)
-2. ไปที่ **My Apps** เลือกแอป **Jong Court Owner**
+2. ไปที่ **My Apps** เลือกแอป **Jong Sanam Owner**
 3. ไปที่แท็บ **TestFlight** เพื่อดู build ที่เพิ่งอัปโหลด
 4. เมื่อพร้อมขายจริง ให้ไปที่แท็บ **App Store** และเลือก Build นั้นเพื่อ Submit for Review
 
@@ -95,7 +95,7 @@ cd ..
 
 **Team ID:** `XUJH3DUPSU`
 **Bundle ID:** `com.jongsanam.ownerapp`
-**App Name:** `Jong Court Owner`
+**App Name:** `Jong Sanam Owner`
 
 **URLs:**
 - Privacy Policy: `https://jongsanam.online/privacy-policy`

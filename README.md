@@ -1,4 +1,4 @@
-# Jong Court Owner App
+# Jong Sanam Owner App
 
 แอปพลิเคชันสำหรับเจ้าของสนามกีฬา รองรับ iOS และ Android พร้อม Tablet Mode
 
@@ -154,4 +154,4 @@ npm run android
 
 ## License
 
-Private - Jong Court Project
+Private - Jong Sanam Project

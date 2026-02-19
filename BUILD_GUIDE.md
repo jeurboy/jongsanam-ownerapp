@@ -1,4 +1,4 @@
-# Build Commands สำหรับ Jong Court Owner App
+# Build Commands สำหรับ Jong Sanam Owner App
 
 ## การตั้งค่าก่อน Build
 
@@ -57,7 +57,7 @@ ENV=production
 | การใช้งาน | Testing, Beta | พนักงานภายในองค์กร |
 | แจกจ่ายสาธารณะ | ได้ (จำกัด) | ❌ ห้าม (ผิดกฎ) |
 
-**💡 คำแนะนำสำหรับ Jong Court Owner App:**
+**💡 คำแนะนำสำหรับ Jong Sanam Owner App:**
 1. **App Store** (แนะนำที่สุด) - สำหรับให้เจ้าของสนามทั่วไปดาวน์โหลด
 2. **Ad-Hoc + TestFlight** - สำหรับ Beta Testing กับกลุ่มทดสอบ 10-20 คน
 3. **❌ ไม่แนะนำ Enterprise** - เพราะ app นี้ไม่ใช่สำหรับพนักงานภายในองค์กร

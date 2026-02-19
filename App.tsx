@@ -1,5 +1,5 @@
 /**
- * Jong Court Owner App - Tablet Optimized
+ * Jong Sanam Owner App - Tablet Optimized
  * https://github.com/facebook/react-native
  *
  * @format

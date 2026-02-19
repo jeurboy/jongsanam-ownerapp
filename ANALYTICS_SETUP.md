@@ -1,5 +1,5 @@
 
-# Setting up Google Analytics (Firebase) for Jong Court Owner App
+# Setting up Google Analytics (Firebase) for Jong Sanam Owner App
 
 I have installed the `@react-native-firebase/analytics` library for you. To make it work, you need to complete the **Native Configuration** steps.
 
